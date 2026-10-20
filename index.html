@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101024">
+<title>Capital AI Studio | استوديو صناعة الفيديو</title>
+<style>
+:root {
+  --bg:#0b0b18;
+  --panel:#15152b;
+  --border:#30304b;
+  --text:#f5f4ff;
+  --muted:#aaa9c5;
+  --purple:#8b5cf6;
+  --blue:#4778ff;
+}
+* {box-sizing:border-box}
+body {
+  margin:0;
+  background:radial-gradient(ellipse at top,#202047 0%,var(--bg) 55%);
+  color:var(--text);
+  font-family:Tahoma,Arial,sans-serif;
+  min-height:100vh;
+}
+header {
+  padding:20px 5%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:15px;
+  border-bottom:1px solid #ffffff12;
+}
+.logo {display:flex;align-items:center;gap:12px}
+.logo-icon {
+  width:45px;height:45px;border-radius:14px;
+  display:grid;place-items:center;font-size:23px;
+  background:linear-gradient(135deg,var(--purple),var(--blue));
+}
+.logo h1 {font-size:19px;margin:0 0 5px}
+.logo p {margin:0;font-size:11px;color:var(--muted)}
+.badge {
+  border:1px solid #4b4380;border-radius:30px;
+  padding:8px 12px;font-size:12px;color:#d8cbff;
+}
+main {max-width:950px;margin:35px auto;padding:0 16px 50px}
+.hero{text-align:center;margin-bottom:30px}
+.hero h2{font-size:clamp(26px,5vw,39px);margin:0 0 13px}
+.hero h2 span {
+  background:linear-gradient(90deg,#b79aff,#70a6ff);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.hero p{color:var(--muted);line-height:1.9;font-size:14px}
+.card {
+  background:#15152beF;
+  border:1px solid var(--border);
+  border-radius:20px;padding:22px;margin-bottom:18px;
+  box-shadow:0 15px 45px #0002;
+}
+.card-title{font-size:16px;font-weight:bold;margin-bottom:18px}
+label{display:block;font-size:13px;margin-bottom:9px;color:#deddf4}
+textarea,select,input[type="text"] {
+  width:100%;border:1px solid var(--border);
+  background:#0e0e20;color:var(--text);
+  border-radius:12px;padding:14px;font:inherit;font-size:14px;
+  outline:none;
+}
+textarea{min-height:130px;resize:vertical;line-height:1.8}
+textarea:focus,select:focus{border-color:var(--purple)}
+.hint{font-size:11px;color:var(--muted);line-height:1.8;margin-top:8px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px}
+.field{margin-bottom:18px}
+.drop {
+  border:1px dashed #625b92;border-radius:14px;
+  padding:22px 12px;text-align:center;cursor:pointer;
+  background:#101024;
+}
+.drop strong{display:block;margin:8px}
+.drop small{color:var(--muted);font-size:11px}
+.drop input{display:none}
+#preview{max-width:100%;max-height:220px;border-radius:12px;margin-top:14px;display:none}
+button {
+  border:0;border-radius:12px;padding:14px 18px;
+  font:inherit;font-size:14px;font-weight:bold;cursor:pointer;
+}
+.primary {
+  width:100%;color:white;
+  background:linear-gradient(100deg,var(--purple),var(--blue));
+}
+.secondary{background:#252542;color:white;border:1px solid var(--border)}
+button:active{transform:scale(.99)}
+.status{display:none;margin-top:16px;padding:14px;border-radius:12px;line-height:1.9;font-size:13px}
+.status.info{display:block;background:#182747;border:1px solid #31538b}
+.status.success{display:block;background:#123328;border:1px solid #286b4d}
+.status.error{display:block;background:#3a1d2a;border:1px solid #84405b}
+.features{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.feature{background:#111126;border:1px solid var(--border);border-radius:14px;padding:16px}
+.feature b{display:block;font-size:13px;margin:10px 0}
+.feature p{color:var(--muted);font-size:11px;line-height:1.8;margin:0}
+footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;border-top:1px solid #ffffff12}
+@media(max-width:600px){
+  header{padding:15px 4%}
+  .logo h1{font-size:15px}
+  .badge{font-size:10px;padding:7px}
+  .grid,.features{grid-template-columns:1fr}
+  .card{padding:17px}
+  main{margin-top:25px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="logo-icon">🎬</div>
+    <div>
+      <h1>Capital AI Studio</h1>
+      <p>استوديو صناعة الفيديو بالذكاء الاصطناعي</p>
+    </div>
+  </div>
+  <div class="badge">النسخة التجريبية</div>
+</header>
+
+<main>
+  <section class="hero">
+    <h2>حوّل أفكارك إلى <span>مشاهد سينمائية</span></h2>
+    <p>اكتب فكرتك، وحدد مواصفات الفيديو، وجهّز طلبك للمرحلة التالية من التوليد.</p>
+  </section>
+
+  <section class="card">
+    <div class="card-title">✍️ وصف الفيديو</div>
+    <div class="field">
+      <label for="prompt">احكي لنا المشهد اللي عايز تصنعه</label>
+      <textarea id="prompt" maxlength="3000" placeholder="مثال: مشهد سينمائي واقعي لقرية مصرية وقت الغروب، حركة كاميرا هادئة، إضاءة ذهبية وتفاصيل دقيقة..."></textarea>
+      <div class="hint"><span id="count">0</span> / 3000 حرف. كلما كان الوصف أوضح، كان الطلب أكثر تحديدًا.</div>
+    </div>
+
+    <div class="field">
+      <label>🖼️ صورة مرجعية (اختياري)</label>
+      <label class="drop" for="image">
+        <div style="font-size:28px">📁</div>
+        <strong>اضغط لاختيار صورة من هاتفك</strong>
+        <small>اختيار الصورة لا يعني توليد فيديو منها حتى نربط محرك التوليد.</small>
+        <input id="image" type="file" accept="image/png,image/jpeg,image/webp">
+        <img id="preview" alt="معاينة الصورة المختارة">
+      </label>
+      <div id="imageName" class="hint"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-title">⚙️ إعدادات الفيديو</div>
+    <div class="grid">
+      <div class="field">
+        <label for="duration">مدة الفيديو</label>
+        <select id="duration">
+          <option value="5">5 ثوانٍ</option>
+          <option value="10">10 ثوانٍ</option>
+          <option value="15">15 ثانية</option>
+          <option value="30">30 ثانية</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="ratio">أبعاد الفيديو</label>
+        <select id="ratio">
+          <option value="16:9">أفقي 16:9 — يوتيوب</option>
+          <option value="9:16">رأسي 9:16 — ريلز وشورتس</option>
+          <option value="1:1">مربع 1:1</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="style">الأسلوب البصري</label>
+        <select id="style">
+          <option value="cinematic">سينمائي واقعي</option>
+          <option value="realistic">واقعي طبيعي</option>
+          <option value="animation">رسوم متحركة</option>
+          <option value="documentary">وثائقي</option>
+          <option value="fantasy">خيالي</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="quality">الجودة المطلوبة</label>
+        <select id="quality">
+          <option value="720p">HD — 720p</option>
+          <option value="1080p">Full HD — 1080p</option>
+        </select>
+      </div>
+    </div>
+    <button class="primary" id="generate">🎬 تجهيز طلب الفيديو</button>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-title">🚀 مميزات المنصة المستهدفة</div>
+    <div class="features">
+      <div class="feature">
+        <div>✍️</div><b>وصف إلى فيديو</b>
+        <p>تحويل النص المكتوب إلى مشهد متحرك بعد ربط محرك التوليد.</p>
+      </div>
+      <div class="feature">
+        <div>🖼️</div><b>صورة إلى فيديو</b>
+        <p>استخدام صورة مرجعية عند دعم هذه الخاصية من المحرك المختار.</p>
+      </div>
+      <div class="feature">
+        <div>⚙️</div><b>إعدادات مرنة</b>
+        <p>تحديد المدة والأبعاد والأسلوب والجودة المطلوبة.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Capital AI Studio © 2026 — واجهة تجريبية قيد التطوير
+</footer>
+
+<script>
+const promptBox = document.getElementById('prompt');
+const count = document.getElementById('count');
+const imageInput = document.getElementById('image');
+const preview = document.getElementById('preview');
+const imageName = document.getElementById('imageName');
+const statusBox = document.getElementById('status');
+
+promptBox.addEventListener('input', () => {
+  count.textContent = promptBox.value.length;
+});
+
+imageInput.addEventListener('change', () => {
+  const file = imageInput.files[0];
+  preview.style.display = 'none';
+  imageName.textContent = '';
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) {
+    imageInput.value = '';
+    showStatus('حجم الصورة أكبر من 10 ميجابايت. اختر صورة أصغر.', 'error');
+    return;
+  }
+  preview.src = URL.createObjectURL(file);
+  preview.style.display = 'block';
+  imageName.textContent = 'الصورة المختارة: ' + file.name;
+});
+
+function showStatus(message, type) {
+  statusBox.className = 'status ' + type;
+  statusBox.textContent = message;
+}
+
+document.getElementById('generate').addEventListener('click', () => {
+  const prompt = promptBox.value.trim();
+  if (!prompt) {
+    showStatus('اكتب وصف الفيديو أولًا، وبعدها اضغط على تجهيز الطلب.', 'error');
+    promptBox.focus();
+    return;
+  }
+
+  const request = {
+    project: 'Capital AI Studio',
+    request_type: imageInput.files.length ? 'image_to_video' : 'text_to_video',
+    prompt,
+    duration_seconds: Number(document.getElementById('duration').value),
+    aspect_ratio: document.getElementById('ratio').value,
+    visual_style: document.getElementById('style').value,
+    requested_quality: document.getElementById('quality').value,
+    status: 'prepared_not_generated',
+    note: 'This file prepares a request only. A video generation backend must be connected.'
+  };
+
+  const blob = new Blob(
+    [JSON.stringify(request, null, 2)],
+    {type: 'application/json;charset=utf-8'}
+  );
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'capital-ai-video-request.json';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+
+  showStatus('تم تجهيز طلبك وتنزيل ملف JSON. تنبيه: لم يتم إنشاء فيديو بعد؛ سنربط محرك التوليد في المرحلة التالية.', 'success');
+});
+</script>
+</body>
+</html>
