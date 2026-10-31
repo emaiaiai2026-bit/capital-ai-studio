@@ -1,0 +1,29 @@
+name: Sync Capital AI Studio to Hugging Face
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Hugging Face CLI
+        run: |
+          curl -LsSf https://hf.co/cli/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Upload project to Hugging Face
+        env:
+          HF_OIDC_RESOURCE: spaces/hdhdhdg119/my-ai-video-studio
+        run: |
+          hf upload spaces/hdhdhdg119/my-ai-video-studio . . --commit-message "Sync from GitHub"
