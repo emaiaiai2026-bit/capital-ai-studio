@@ -244,40 +244,51 @@ function showStatus(message, type) {
   statusBox.textContent = message;
 }
 
-document.getElementById('generate').addEventListener('click', () => {
+const API_BASE = 'https://capital-ai-studio-api.emaiaiai2026.workers.dev';
+
+document.getElementById('generate').addEventListener('click', async () => {
   const prompt = promptBox.value.trim();
   if (!prompt) {
-    showStatus('اكتب وصف الفيديو أولًا، وبعدها اضغط على تجهيز الطلب.', 'error');
+    showStatus('اكتب وصف الفيديو أولًا، وبعدها اضغط على إنشاء الفيديو.', 'error');
     promptBox.focus();
     return;
   }
+  if (imageInput.files.length) {
+    showStatus('رفع الصورة محفوظ في الواجهة، لكن محرك الصورة إلى فيديو غير متصل حاليًا. جرّب وصفًا نصيًا فقط.', 'error');
+    return;
+  }
 
-  const request = {
-    project: 'Capital AI Studio',
-    request_type: imageInput.files.length ? 'image_to_video' : 'text_to_video',
-    prompt,
-    duration_seconds: Number(document.getElementById('duration').value),
-    aspect_ratio: document.getElementById('ratio').value,
-    visual_style: document.getElementById('style').value,
-    requested_quality: document.getElementById('quality').value,
-    status: 'prepared_not_generated',
-    note: 'This file prepares a request only. A video generation backend must be connected.'
-  };
+  const button = document.getElementById('generate');
+  button.disabled = true;
+  button.textContent = 'جارٍ الاتصال بالخادم...';
+  showStatus('جارٍ إرسال طلبك إلى خادم Capital AI Studio والتحقق من حالة محرك الفيديو...', 'info');
 
-  const blob = new Blob(
-    [JSON.stringify(request, null, 2)],
-    {type: 'application/json;charset=utf-8'}
-  );
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = 'capital-ai-video-request.json';
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-
-  showStatus('تم تجهيز طلبك وتنزيل ملف JSON. تنبيه: لم يتم إنشاء فيديو بعد؛ سنربط محرك التوليد في المرحلة التالية.', 'success');
+  try {
+    const response = await fetch(API_BASE + '/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        project: 'Capital AI Studio',
+        request_type: 'text_to_video',
+        prompt,
+        duration_seconds: Number(document.getElementById('duration').value),
+        aspect_ratio: document.getElementById('ratio').value,
+        visual_style: document.getElementById('style').value,
+        requested_quality: document.getElementById('quality').value
+      })
+    });
+    const result = await response.json();
+    if (response.ok && result.ok) {
+      showStatus('تم قبول طلب الفيديو من الخادم. ' + (result.message || ''), 'success');
+    } else {
+      showStatus((result.message || result.error || 'الخادم لم يتمكن من إنشاء الفيديو.') + ' — لم يتم إنشاء فيديو ولم يتم خصم أي مبلغ من خلال هذه الواجهة.', 'error');
+    }
+  } catch (error) {
+    showStatus('تعذر الاتصال بخادم التوليد. تحقق من اتصال الإنترنت وحاول لاحقًا. لم يتم إنشاء فيديو.', 'error');
+  } finally {
+    button.disabled = false;
+    button.textContent = '🎬 إنشاء الفيديو';
+  }
 });
 </script>
 </body>
