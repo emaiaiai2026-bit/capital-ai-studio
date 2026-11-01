@@ -227,23 +227,9 @@ const imageName = document.getElementById('imageName');
 const statusBox = document.getElementById('status');
 const engineStatus = document.getElementById('engineStatus');
 
-async function loadEngineBalance() {
-  try {
-    const response = await fetch(API_BASE + '/api/balance');
-    const data = await response.json();
-    if (response.ok && data.ok && data.connected) {
-      engineStatus.className = 'status success';
-      engineStatus.textContent = 'Magic Hour متصل — الرصيد: ' +
-        (data.credits === null ? 'غير متاح' : data.credits + ' Credits') +
-        ' — نوع الحساب: ' + (data.subscriptionTier || 'غير محدد');
-    } else {
-      engineStatus.className = 'status error';
-      engineStatus.textContent = 'تعذر التحقق من رصيد Magic Hour. راجع إعدادات الاتصال قبل التوليد.';
-    }
-  } catch {
-    engineStatus.className = 'status error';
-    engineStatus.textContent = 'تعذر الاتصال بخادم Capital AI Studio لفحص الرصيد.';
-  }
+function loadEngineBalance() {
+  engineStatus.className = 'status info';
+  engineStatus.textContent = 'فحص الرصيد متوقف مؤقتًا في وضع المراجعة. لم يتم إرسال أي طلب إلى محرك التوليد.';
 }
 
 promptBox.addEventListener('input', () => {
@@ -305,10 +291,12 @@ document.getElementById('generate').addEventListener('click', async () => {
       })
     });
     const result = await response.json();
-    if (response.ok && result.ok) {
-      showStatus('تم قبول طلب الفيديو من الخادم. ' + (result.message || ''), 'success');
+    if (response.ok && result.ok && result.state === 'review_only' && result.generationEnabled === false) {
+      showStatus('تم فحص بيانات الطلب بنجاح فقط. لم يبدأ إنشاء الفيديو ولم يتم إرسال طلب إلى Magic Hour.', 'success');
+    } else if (response.ok && result.ok) {
+      showStatus('استلمت الواجهة ردًا غير متوقع من الخادم. لم يتم اعتماد حالة التوليد.', 'info');
     } else {
-      showStatus((result.message || result.error || 'الخادم لم يتمكن من إنشاء الفيديو.') + ' — لم يتم إنشاء فيديو ولم يتم خصم أي مبلغ من خلال هذه الواجهة.', 'error');
+      showStatus(result.message || result.error || 'تعذر فحص الطلب. لم يتم بدء التوليد من وضع المراجعة.', 'error');
     }
   } catch (error) {
     showStatus('تعذر الاتصال بخادم التوليد. تحقق من اتصال الإنترنت وحاول لاحقًا. لم يتم إنشاء فيديو.', 'error');
