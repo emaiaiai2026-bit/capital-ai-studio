@@ -147,6 +147,12 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
     </div>
   </section>
 
+  <section class="card" aria-live="polite">
+    <div class="card-title">🔌 حالة محرك الفيديو والرصيد</div>
+    <div id="engineStatus" class="status info" style="display:block">جارٍ فحص اتصال Magic Hour...</div>
+    <p class="hint">قراءة الرصيد لا تنشئ فيديو ولا تخصم Credits. تكلفة التوليد ستظهر بعد التحقق من الموديل والإعدادات قبل أي طلب.</p>
+  </section>
+
   <section class="card">
     <div class="card-title">⚙️ إعدادات الفيديو</div>
     <div class="grid">
@@ -219,6 +225,26 @@ const imageInput = document.getElementById('image');
 const preview = document.getElementById('preview');
 const imageName = document.getElementById('imageName');
 const statusBox = document.getElementById('status');
+const engineStatus = document.getElementById('engineStatus');
+
+async function loadEngineBalance() {
+  try {
+    const response = await fetch(API_BASE + '/api/balance');
+    const data = await response.json();
+    if (response.ok && data.ok && data.connected) {
+      engineStatus.className = 'status success';
+      engineStatus.textContent = 'Magic Hour متصل — الرصيد: ' +
+        (data.credits === null ? 'غير متاح' : data.credits + ' Credits') +
+        ' — نوع الحساب: ' + (data.subscriptionTier || 'غير محدد');
+    } else {
+      engineStatus.className = 'status error';
+      engineStatus.textContent = 'تعذر التحقق من رصيد Magic Hour. راجع إعدادات الاتصال قبل التوليد.';
+    }
+  } catch {
+    engineStatus.className = 'status error';
+    engineStatus.textContent = 'تعذر الاتصال بخادم Capital AI Studio لفحص الرصيد.';
+  }
+}
 
 promptBox.addEventListener('input', () => {
   count.textContent = promptBox.value.length;
@@ -245,6 +271,7 @@ function showStatus(message, type) {
 }
 
 const API_BASE = 'https://capital-ai-studio-api.emaiaiai2026.workers.dev';
+loadEngineBalance();
 
 document.getElementById('generate').addEventListener('click', async () => {
   const prompt = promptBox.value.trim();
@@ -287,7 +314,7 @@ document.getElementById('generate').addEventListener('click', async () => {
     showStatus('تعذر الاتصال بخادم التوليد. تحقق من اتصال الإنترنت وحاول لاحقًا. لم يتم إنشاء فيديو.', 'error');
   } finally {
     button.disabled = false;
-    button.textContent = '🎬 إنشاء الفيديو';
+    button.textContent = '🎬 تجهيز طلب الفيديو';
   }
 });
 </script>
