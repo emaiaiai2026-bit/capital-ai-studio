@@ -256,10 +256,8 @@ function showStatus(message, type) {
   statusBox.textContent = message;
 }
 
-const API_BASE = 'https://capital-ai-studio-review-api.emaiaiai2026.workers.dev';
-loadEngineBalance();
-
-document.getElementById('generate').addEventListener('click', async () => {
+// Local-only review mode: no network requests, API calls, provider calls, or credit usage.
+document.getElementById('generate').addEventListener('click', () => {
   const prompt = promptBox.value.trim();
   if (!prompt) {
     showStatus('اكتب وصفًا أولًا، ثم اضغط على اختبار الطلب.', 'error');
@@ -267,43 +265,28 @@ document.getElementById('generate').addEventListener('click', async () => {
     return;
   }
   if (imageInput.files.length) {
-    showStatus('رفع الصورة محفوظ في الواجهة، لكن محرك الصورة إلى فيديو غير متصل حاليًا. جرّب وصفًا نصيًا فقط.', 'error');
-    return;
+    showStatus('تم اختيار صورة للمعاينة فقط. اختبار البيانات المحلي يعمل على الوصف والإعدادات دون رفع الصورة.', 'info');
   }
 
-  const button = document.getElementById('generate');
-  button.disabled = true;
-  button.textContent = 'جارٍ الاتصال بالخادم...';
-  showStatus('جارٍ إرسال بيانات الاختبار إلى خادم المراجعة فقط. لن يتم إنشاء فيديو.', 'info');
+  const localTest = {
+    project: 'Capital AI Studio',
+    request_type: imageInput.files.length ? 'image_to_video_preview_only' : 'text_to_video_preview_only',
+    prompt,
+    duration_seconds: Number(document.getElementById('duration').value),
+    aspect_ratio: document.getElementById('ratio').value,
+    visual_style: document.getElementById('style').value,
+    requested_quality: document.getElementById('quality').value,
+    image_selected: imageInput.files.length > 0,
+    test_mode: 'local_only'
+  };
 
-  try {
-    const response = await fetch(API_BASE + '/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        project: 'Capital AI Studio',
-        request_type: 'text_to_video',
-        prompt,
-        duration_seconds: Number(document.getElementById('duration').value),
-        aspect_ratio: document.getElementById('ratio').value,
-        visual_style: document.getElementById('style').value,
-        requested_quality: document.getElementById('quality').value
-      })
-    });
-    const result = await response.json();
-    if (response.ok && result.ok && result.state === 'review_only' && result.generationEnabled === false) {
-      showStatus('نجح اختبار بيانات الطلب فقط. لم يتم إنشاء فيديو ولم يتم الاتصال بـ Magic Hour.', 'success');
-    } else if (response.ok && result.ok) {
-      showStatus('استلمت الواجهة ردًا غير متوقع من الخادم. لم يتم اعتماد حالة التوليد.', 'info');
-    } else {
-      showStatus(result.message || result.error || 'تعذر فحص الطلب. لم يتم بدء التوليد من وضع المراجعة.', 'error');
-    }
-  } catch (error) {
-    showStatus('تعذر الاتصال بخادم المراجعة. تحقق من الإنترنت وحاول لاحقًا. لم يتم إنشاء فيديو.', 'error');
-  } finally {
-    button.disabled = false;
-    button.textContent = '🧪 اختبار الطلب (بدون توليد)';
-  }
+  showStatus(
+    'نجح الاختبار المحلي! تم التحقق من وصف الطلب والإعدادات داخل الصفحة فقط. لم يتم إرسال أي بيانات إلى خادم، ولم يتم رفع الصورة أو إنشاء فيديو أو خصم رصيد.\n\n' +
+    'المدة: ' + localTest.duration_seconds + ' ثوانٍ' +
+    ' — الأبعاد: ' + localTest.aspect_ratio +
+    ' — الجودة: ' + localTest.requested_quality,
+    'success'
+  );
 });
 </script>
 </body>
