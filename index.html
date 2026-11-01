@@ -93,6 +93,19 @@ button:active{transform:scale(.99)}
 .status.info{display:block;background:#182747;border:1px solid #31538b}
 .status.success{display:block;background:#123328;border:1px solid #286b4d}
 .status.error{display:block;background:#3a1d2a;border:1px solid #84405b}
+.cost-box{background:#101024;border:1px solid #49436f;border-radius:14px;padding:16px;margin-top:18px}
+.cost-line{display:flex;justify-content:space-between;gap:12px;padding:7px 0;color:var(--muted);font-size:13px}
+.cost-line strong{color:var(--text)}
+.cost-total{border-top:1px solid var(--border);margin-top:8px;padding-top:13px;font-size:17px}
+.modal-backdrop{display:none;position:fixed;inset:0;background:#050510dd;z-index:20;align-items:center;justify-content:center;padding:18px}
+.modal-backdrop.open{display:flex}
+.modal{width:min(100%,430px);background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:20px}
+.modal h3{margin:0 0 12px;font-size:18px}
+.modal p{color:var(--muted);font-size:13px;line-height:1.8}
+.modal-actions{display:flex;gap:10px;margin-top:18px}
+.modal-actions button{flex:1}
+.check-row{display:flex;align-items:flex-start;gap:9px;margin-top:14px;font-size:12px;line-height:1.7}
+.check-row input{margin-top:4px}
 .features{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .feature{background:#111126;border:1px solid var(--border);border-radius:14px;padding:16px}
 .feature b{display:block;font-size:13px;margin:10px 0}
@@ -162,7 +175,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
           <option value="5">5 ثوانٍ</option>
           <option value="10">10 ثوانٍ</option>
           <option value="15">15 ثانية</option>
-          <option value="30">30 ثانية</option>
+          
         </select>
       </div>
       <div class="field">
@@ -186,12 +199,22 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
       <div class="field">
         <label for="quality">الجودة المطلوبة</label>
         <select id="quality">
-          <option value="720p">HD — 720p</option>
-          <option value="1080p">Full HD — 1080p</option>
+          <option value="480p">اقتصادي — 480p</option>
+          <option value="768p" selected>متوازن — 768p</option>
+          <option value="1080p">عالي — 1080p</option>
         </select>
       </div>
     </div>
-    <button class="primary" id="generate">🧪 اختبار الطلب (بدون توليد)</button>
+    <div class="cost-box" aria-live="polite">
+      <div class="card-title">💰 التكلفة التقديرية</div>
+      <div class="cost-line"><span>المدة</span><strong id="costDuration">5 ثوانٍ</strong></div>
+      <div class="cost-line"><span>الجودة</span><strong id="costQuality">768p — متوازن</strong></div>
+      <div class="cost-line"><span>سعر الثانية</span><strong id="costRate">$0.04</strong></div>
+      <div class="cost-line cost-total"><span>التكلفة التقديرية</span><strong id="costTotal">$0.20</strong></div>
+      <p class="hint">الأسعار العادية المنشورة لـ Pika H3 Flex بالدولار، وقد تتغير حسب المزود. لا يوجد خصم أو طلب فعلي في وضع المراجعة.</p>
+      <p class="hint">العرض المؤقت حتى 5 نوفمبر 2026 غير محسوب كسعر دائم.</p>
+    </div>
+    <button class="primary" id="generate">مراجعة التكلفة والموافقة (تجريبي)</button>
     <div id="status" class="status" role="status" aria-live="polite"></div>
   </section>
 
@@ -213,7 +236,17 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
     </div>
   </section>
 </main>
-
+<div class="modal-backdrop" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="modal">
+    <h3 id="confirmTitle">مراجعة الطلب قبل الموافقة</h3>
+    <p id="confirmSummary">مراجعة محلية فقط.</p>
+    <label class="check-row"><input type="checkbox" id="confirmCheck"><span>أوافق على التكلفة التقديرية، وأفهم أن الموافقة تجريبية ولا ترسل طلب توليد.</span></label>
+    <div class="modal-actions">
+      <button class="secondary" type="button" id="cancelConfirm">رجوع وتعديل</button>
+      <button class="primary" type="button" id="approveConfirm" disabled>تأكيد تجريبي</button>
+    </div>
+  </div>
+</div>
 <footer>
   Capital AI Studio © 2026 — واجهة تجريبية قيد التطوير
 </footer>
@@ -226,6 +259,99 @@ const preview = document.getElementById('preview');
 const imageName = document.getElementById('imageName');
 const statusBox = document.getElementById('status');
 const engineStatus = document.getElementById('engineStatus');
+const durationSelect = document.getElementById('duration');
+const qualitySelect = document.getElementById('quality');
+const confirmModal = document.getElementById('confirmModal');
+const confirmCheck = document.getElementById('confirmCheck');
+const approveConfirm = document.getElementById('approveConfirm');
+const rates = {'480p':0.02,'768p':0.04,'1080p':0.07};
+const qualityNames = {'480p':'اقتصادي','768p':'متوازن','1080p':'عالي'};
+function money(n){return '
+
+function loadEngineBalance() {
+  engineStatus.className = 'status info';
+  engineStatus.textContent = 'فحص الرصيد متوقف مؤقتًا في وضع المراجعة. لم يتم إرسال أي طلب إلى محرك التوليد.';
+}
+
+promptBox.addEventListener('input', () => {
+  count.textContent = promptBox.value.length;
+});
+
+let previewUrl = null;
+
+imageInput.addEventListener('change', () => {
+  const file = imageInput.files[0];
+
+  // Release the previous local preview URL before handling a new selection.
+  if (previewUrl) {
+    URL.revokeObjectURL(previewUrl);
+    previewUrl = null;
+  }
+  preview.removeAttribute('src');
+  preview.style.display = 'none';
+  imageName.textContent = '';
+
+  if (!file) return;
+
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!allowedTypes.includes(file.type)) {
+    imageInput.value = '';
+    showStatus('نوع الصورة غير مدعوم. اختر JPG أو PNG أو WebP.', 'error');
+    return;
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    imageInput.value = '';
+    showStatus('حجم الصورة أكبر من 10 ميجابايت. اختر صورة أصغر.', 'error');
+    return;
+  }
+
+  previewUrl = URL.createObjectURL(file);
+  preview.src = previewUrl;
+  preview.style.display = 'block';
+  imageName.textContent = 'الصورة المختارة: ' + file.name;
+  showStatus('تم اختيار الصورة وعرضها محليًا داخل الصفحة. لم يتم رفعها إلى أي خادم.', 'success');
+});
+
+window.addEventListener('beforeunload', () => {
+  if (previewUrl) URL.revokeObjectURL(previewUrl);
+});
+
+function showStatus(message, type) {
+  statusBox.className = 'status ' + type;
+  statusBox.textContent = message;
+}
+
+// Local-only review mode: simulated quote and approval; no network or generation.
+document.getElementById('generate').addEventListener('click',()=>{
+  if(!promptBox.value.trim()){showStatus('اكتب وصفًا أولًا، ثم راجع التكلفة.','error');promptBox.focus();return;}
+  const q=updateCost();
+  document.getElementById('confirmSummary').textContent='المدة: '+q.seconds+' ثانية — الجودة: '+q.quality+' — التكلفة التقديرية: '+money(q.total)+'. لن يتم إرسال طلب أو رفع صورة أو إنشاء فيديو أو خصم رصيد.';
+  confirmCheck.checked=false;approveConfirm.disabled=true;confirmModal.classList.add('open');
+});
+approveConfirm.addEventListener('click',()=>{
+  confirmModal.classList.remove('open');confirmCheck.checked=false;approveConfirm.disabled=true;
+  showStatus('تم تسجيل الموافقة التجريبية محليًا فقط. لم يتم إرسال بيانات أو إنشاء فيديو أو خصم رصيد.','success');
+});
+</script>
+</body>
+</html>
++n.toFixed(3).replace(/0+$/,'').replace(/\.$/,'');}
+function updateCost(){
+  const seconds=Number(durationSelect.value), quality=qualitySelect.value, rate=rates[quality], total=seconds*rate;
+  document.getElementById('costDuration').textContent=seconds+' ثانية';
+  document.getElementById('costQuality').textContent=quality+' — '+qualityNames[quality];
+  document.getElementById('costRate').textContent=money(rate);
+  document.getElementById('costTotal').textContent=money(total);
+  return {seconds,quality,total};
+}
+durationSelect.addEventListener('change',updateCost);
+qualitySelect.addEventListener('change',updateCost);
+updateCost();
+confirmCheck.addEventListener('change',()=>{approveConfirm.disabled=!confirmCheck.checked;});
+document.getElementById('cancelConfirm').addEventListener('click',()=>{
+  confirmModal.classList.remove('open');confirmCheck.checked=false;approveConfirm.disabled=true;
+});
 
 function loadEngineBalance() {
   engineStatus.className = 'status info';
