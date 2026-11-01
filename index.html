@@ -122,8 +122,8 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
 
 <main>
   <section class="hero">
-    <h2>حوّل أفكارك إلى <span>مشاهد سينمائية</span></h2>
-    <p>اكتب فكرتك، وحدد مواصفات الفيديو، وجهّز طلبك للمرحلة التالية من التوليد.</p>
+    <h2>اختبر تجهيز طلبك دون إنشاء فيديو</h2>
+    <p>اكتب وصفك وحدد الإعدادات لاختبار الطلب فقط. هذا الوضع لا يُنشئ فيديو ولا يخصم رصيدًا.</p>
   </section>
 
   <section class="card">
@@ -148,9 +148,9 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
   </section>
 
   <section class="card" aria-live="polite">
-    <div class="card-title">🔌 حالة محرك الفيديو والرصيد</div>
-    <div id="engineStatus" class="status info" style="display:block">جارٍ فحص اتصال Magic Hour...</div>
-    <p class="hint">قراءة الرصيد لا تنشئ فيديو ولا تخصم Credits. تكلفة التوليد ستظهر بعد التحقق من الموديل والإعدادات قبل أي طلب.</p>
+    <div class="card-title">🔌 حالة وضع المراجعة</div>
+    <div id="engineStatus" class="status info" style="display:block">وضع المراجعة فقط — التوليد غير مفعّل</div>
+    <p class="hint">لا يوجد اتصال بمحرك توليد أو قراءة رصيد. هذا الاختبار لا ينشئ فيديو ولا يخصم Credits.</p>
   </section>
 
   <section class="card">
@@ -191,7 +191,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
         </select>
       </div>
     </div>
-    <button class="primary" id="generate">🎬 تجهيز طلب الفيديو</button>
+    <button class="primary" id="generate">🧪 اختبار الطلب (بدون توليد)</button>
     <div id="status" class="status" role="status" aria-live="polite"></div>
   </section>
 
@@ -200,15 +200,15 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
     <div class="features">
       <div class="feature">
         <div>✍️</div><b>وصف إلى فيديو</b>
-        <p>تحويل النص المكتوب إلى مشهد متحرك بعد ربط محرك التوليد.</p>
+        <p>خاصية مستهدفة مستقبلًا؛ غير مفعّلة في وضع المراجعة.</p>
       </div>
       <div class="feature">
         <div>🖼️</div><b>صورة إلى فيديو</b>
-        <p>استخدام صورة مرجعية عند دعم هذه الخاصية من المحرك المختار.</p>
+        <p>خاصية مستهدفة مستقبلًا؛ اختيار الصورة هنا للمعاينة فقط.</p>
       </div>
       <div class="feature">
         <div>⚙️</div><b>إعدادات مرنة</b>
-        <p>تحديد المدة والأبعاد والأسلوب والجودة المطلوبة.</p>
+        <p>اختبار إعدادات الطلب دون توليد فيديو.</p>
       </div>
     </div>
   </section>
@@ -262,7 +262,7 @@ loadEngineBalance();
 document.getElementById('generate').addEventListener('click', async () => {
   const prompt = promptBox.value.trim();
   if (!prompt) {
-    showStatus('اكتب وصف الفيديو أولًا، وبعدها اضغط على إنشاء الفيديو.', 'error');
+    showStatus('اكتب وصفًا أولًا، ثم اضغط على اختبار الطلب.', 'error');
     promptBox.focus();
     return;
   }
@@ -274,7 +274,7 @@ document.getElementById('generate').addEventListener('click', async () => {
   const button = document.getElementById('generate');
   button.disabled = true;
   button.textContent = 'جارٍ الاتصال بالخادم...';
-  showStatus('جارٍ إرسال طلبك إلى خادم Capital AI Studio والتحقق من حالة محرك الفيديو...', 'info');
+  showStatus('جارٍ إرسال بيانات الاختبار إلى خادم المراجعة فقط. لن يتم إنشاء فيديو.', 'info');
 
   try {
     const response = await fetch(API_BASE + '/api/generate', {
@@ -292,14 +292,14 @@ document.getElementById('generate').addEventListener('click', async () => {
     });
     const result = await response.json();
     if (response.ok && result.ok && result.state === 'review_only' && result.generationEnabled === false) {
-      showStatus('تم فحص بيانات الطلب بنجاح فقط. لم يبدأ إنشاء الفيديو ولم يتم إرسال طلب إلى Magic Hour.', 'success');
+      showStatus('نجح اختبار بيانات الطلب فقط. لم يتم إنشاء فيديو ولم يتم الاتصال بـ Magic Hour.', 'success');
     } else if (response.ok && result.ok) {
       showStatus('استلمت الواجهة ردًا غير متوقع من الخادم. لم يتم اعتماد حالة التوليد.', 'info');
     } else {
       showStatus(result.message || result.error || 'تعذر فحص الطلب. لم يتم بدء التوليد من وضع المراجعة.', 'error');
     }
   } catch (error) {
-    showStatus('تعذر الاتصال بخادم التوليد. تحقق من اتصال الإنترنت وحاول لاحقًا. لم يتم إنشاء فيديو.', 'error');
+    showStatus('تعذر الاتصال بخادم المراجعة. تحقق من الإنترنت وحاول لاحقًا. لم يتم إنشاء فيديو.', 'error');
   } finally {
     button.disabled = false;
     button.textContent = '🎬 تجهيز طلب الفيديو';
