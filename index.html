@@ -236,19 +236,44 @@ promptBox.addEventListener('input', () => {
   count.textContent = promptBox.value.length;
 });
 
+let previewUrl = null;
+
 imageInput.addEventListener('change', () => {
   const file = imageInput.files[0];
+
+  // Release the previous local preview URL before handling a new selection.
+  if (previewUrl) {
+    URL.revokeObjectURL(previewUrl);
+    previewUrl = null;
+  }
+  preview.removeAttribute('src');
   preview.style.display = 'none';
   imageName.textContent = '';
+
   if (!file) return;
+
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!allowedTypes.includes(file.type)) {
+    imageInput.value = '';
+    showStatus('نوع الصورة غير مدعوم. اختر JPG أو PNG أو WebP.', 'error');
+    return;
+  }
+
   if (file.size > 10 * 1024 * 1024) {
     imageInput.value = '';
     showStatus('حجم الصورة أكبر من 10 ميجابايت. اختر صورة أصغر.', 'error');
     return;
   }
-  preview.src = URL.createObjectURL(file);
+
+  previewUrl = URL.createObjectURL(file);
+  preview.src = previewUrl;
   preview.style.display = 'block';
   imageName.textContent = 'الصورة المختارة: ' + file.name;
+  showStatus('تم اختيار الصورة وعرضها محليًا داخل الصفحة. لم يتم رفعها إلى أي خادم.', 'success');
+});
+
+window.addEventListener('beforeunload', () => {
+  if (previewUrl) URL.revokeObjectURL(previewUrl);
 });
 
 function showStatus(message, type) {
