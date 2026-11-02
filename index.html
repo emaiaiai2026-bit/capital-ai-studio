@@ -100,7 +100,10 @@ button:active{transform:scale(.99)}
 .cost-total{border-top:1px solid var(--border);margin-top:8px;padding-top:13px;font-size:17px}
 .modal-backdrop{display:none;position:fixed;inset:0;background:#050510dd;z-index:20;align-items:center;justify-content:center;padding:18px}
 .modal-backdrop.open{display:flex}
-.modal{width:min(100%,430px);background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:20px}
+.modal{width:min(100%,430px);background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:20px;max-height:90vh;overflow:auto}
+.modal:focus{outline:2px solid var(--purple);outline-offset:4px}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #b79aff;outline-offset:3px}
+button:disabled{opacity:.5;cursor:not-allowed}
 .modal h3{margin:0 0 12px;font-size:18px}
 .modal p{color:var(--muted);font-size:13px;line-height:1.8}
 .modal-actions{display:flex;gap:10px;margin-top:18px}
@@ -237,7 +240,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
     </div>
   </section>
 </main>
-<div class="modal-backdrop" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+<div class="modal-backdrop" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmSummary">
   <div class="modal">
     <h3 id="confirmTitle">مراجعة الطلب قبل الموافقة</h3>
     <p id="confirmSummary">مراجعة محلية فقط.</p>
@@ -263,6 +266,8 @@ const engineStatus = document.getElementById('engineStatus');
 const durationSelect = document.getElementById('duration');
 const qualitySelect = document.getElementById('quality');
 const confirmModal = document.getElementById('confirmModal');
+const modalPanel = confirmModal.querySelector('.modal');
+let modalReturnFocus = null;
 const confirmCheck = document.getElementById('confirmCheck');
 const approveConfirm = document.getElementById('approveConfirm');
 const rates = {'480p':0.02,'768p':0.04,'1080p':0.07};
@@ -302,10 +307,48 @@ loadEngineBalance();
 confirmCheck.addEventListener('change', () => {
   approveConfirm.disabled = !confirmCheck.checked;
 });
-document.getElementById('cancelConfirm').addEventListener('click', () => {
+function closeConfirmModal() {
+  if (!confirmModal.classList.contains('open')) return;
   confirmModal.classList.remove('open');
   confirmCheck.checked = false;
   approveConfirm.disabled = true;
+  document.body.style.overflow = '';
+  if (modalReturnFocus && document.contains(modalReturnFocus)) modalReturnFocus.focus();
+  modalReturnFocus = null;
+}
+function openConfirmModal() {
+  modalReturnFocus = document.activeElement;
+  confirmModal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('cancelConfirm').focus();
+}
+document.getElementById('cancelConfirm').addEventListener('click', closeConfirmModal);
+confirmModal.addEventListener('click', (event) => {
+  if (event.target === confirmModal) closeConfirmModal();
+});
+document.addEventListener('keydown', (event) => {
+  if (!confirmModal.classList.contains('open')) return;
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeConfirmModal();
+    return;
+  }
+  if (event.key !== 'Tab') return;
+  const focusable = Array.from(modalPanel.querySelectorAll('button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])')).filter(el => el.getClientRects().length > 0);
+  if (!focusable.length) {
+    event.preventDefault();
+    modalPanel.focus();
+    return;
+  }
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && (document.activeElement === first || !modalPanel.contains(document.activeElement))) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && (document.activeElement === last || !modalPanel.contains(document.activeElement))) {
+    event.preventDefault();
+    first.focus();
+  }
 });
 document.getElementById('generate').addEventListener('click', () => {
   if (!promptBox.value.trim()) {
@@ -320,12 +363,10 @@ document.getElementById('generate').addEventListener('click', () => {
     '. هذه موافقة تجريبية فقط؛ لن يتم إرسال طلب أو رفع صورة أو إنشاء فيديو أو خصم رصيد.';
   confirmCheck.checked = false;
   approveConfirm.disabled = true;
-  confirmModal.classList.add('open');
+  openConfirmModal();
 });
 approveConfirm.addEventListener('click', () => {
-  confirmModal.classList.remove('open');
-  confirmCheck.checked = false;
-  approveConfirm.disabled = true;
+  closeConfirmModal();
   showStatus('تم تسجيل الموافقة التجريبية محليًا فقط. لم يتم إرسال بيانات أو إنشاء فيديو أو خصم رصيد.', 'success');
 });
 
