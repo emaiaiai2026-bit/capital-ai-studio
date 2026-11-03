@@ -266,7 +266,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
 </footer>
 
 <script>
-const API_BASE = (window.CAPITAL_API_BASE || '').replace(/\/$/, '');
+const API_BASE = (window.CAPITAL_API_BASE || 'https://capital-ai-studio-api.emaiaiai2026.workers.dev').replace(/\/$/, '');
 const apiUrl = (path) => API_BASE + path;
 let currentUser = null;
 const apiStatus = document.getElementById('apiStatus');
