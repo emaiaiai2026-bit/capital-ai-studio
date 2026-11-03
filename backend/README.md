@@ -66,6 +66,7 @@ Test coverage currently includes:
 - Rejection of invalid lifecycle transitions without history changes.
 - Isolation between distinct Durable Object identities.
 - Missing-job lookup.
+- Worker HTTP integration: authenticated draft creation, owner-scoped retrieval, and health availability before OAuth configuration.
 
 The rollback test intentionally causes JSON serialization to throw after the SQL update has run inside `transactionSync`; the expected result is that the transaction restores the prior status and event count.
 
