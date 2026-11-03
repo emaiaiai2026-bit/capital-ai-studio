@@ -139,8 +139,8 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
 
 <main>
   <section class="hero">
-    <h2>اختبر تجهيز طلبك دون إنشاء فيديو</h2>
-    <p>اكتب وصفك وحدد الإعدادات لاختبار الطلب فقط. هذا الوضع لا يُنشئ فيديو ولا يخصم رصيدًا.</p>
+    <h2>حوّل فكرتك إلى فيديو بالذكاء الاصطناعي</h2>
+    <p>اكتب وصف المشهد أو اختر صورة مرجعية، ثم أرسل طلب التوليد بعد مراجعة إعداداته.</p>
   </section>
 
   <section class="card">
@@ -156,7 +156,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
       <label class="drop" for="image">
         <div style="font-size:28px">📁</div>
         <strong>اضغط لاختيار صورة من هاتفك</strong>
-        <small>اختيار الصورة لا يعني توليد فيديو منها حتى نربط محرك التوليد.</small>
+        <small>يمكن استخدام الصورة كبداية للفيديو. لا يتم رفعها إلا بعد موافقتك على التوليد.</small>
         <input id="image" type="file" accept="image/png,image/jpeg,image/webp">
         <img id="preview" alt="معاينة الصورة المختارة">
       </label>
@@ -166,8 +166,8 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
 
   <section class="card" aria-live="polite">
     <div class="card-title">🔌 حالة وضع المراجعة</div>
-    <div id="engineStatus" class="status info" style="display:block">وضع المراجعة فقط — التوليد غير مفعّل</div>
-    <p class="hint">لا يوجد اتصال بمحرك توليد أو قراءة رصيد. هذا الاختبار لا ينشئ فيديو ولا يخصم Credits.</p>
+    <div id="engineStatus" class="status info" style="display:block">جارٍ فحص اتصال محرك الفيديو...</div>
+    <p class="hint">يدعم المشروع التوليد عبر Magic Hour. لا يبدأ أي طلب قبل تسجيل الدخول وموافقتك الصريحة.</p>
   </section>
 
   <section class="card">
@@ -210,15 +210,12 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
       </div>
     </div>
     <div class="cost-box" aria-live="polite">
-      <div class="card-title">💰 التكلفة التقديرية</div>
-      <div class="cost-line"><span>المدة</span><strong id="costDuration">5 ثوانٍ</strong></div>
-      <div class="cost-line"><span>الجودة</span><strong id="costQuality">768p — متوازن</strong></div>
-      <div class="cost-line"><span>سعر الثانية</span><strong id="costRate">$0.04</strong></div>
-      <div class="cost-line cost-total"><span>التكلفة التقديرية</span><strong id="costTotal">$0.20</strong></div>
-      <p class="hint">الأسعار العادية المنشورة لـ Pika H3 Flex بالدولار، وقد تتغير حسب المزود. لا يوجد خصم أو طلب فعلي في وضع المراجعة.</p>
-      <p class="hint">العرض المؤقت حتى 5 نوفمبر 2026 غير محسوب كسعر دائم.</p>
+      <div class="card-title">💳 قبل بدء التوليد</div>
+      <p class="hint">سنبدأ بالموديل LTX-2.5 بدقة 480p لتقليل التكلفة. الخصم الفعلي يحدده حساب Magic Hour ويظهر بعد قبول المزود للطلب. راجع رصيدك قبل الموافقة.</p>
+      <p class="hint">حفظ المسودة لا يستهلك Credits. إرسال طلب التوليد قد يستهلك رصيدًا من حساب المزود، ولن يحدث ذلك إلا بعد موافقتك الصريحة.</p>
     </div>
-    <button class="primary" id="generate">مراجعة التكلفة وحفظ المسودة</button>
+    <button class="primary" id="generate">إنشاء الفيديو الآن</button>
+    <button class="secondary" id="saveDraftButton" type="button" style="width:100%;margin-top:10px">حفظ كمسودة فقط دون توليد</button>
     <div id="status" class="status" role="status" aria-live="polite"></div>
   </section>
 
@@ -260,10 +257,10 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
   <div class="modal">
     <h3 id="confirmTitle">مراجعة الطلب قبل الموافقة</h3>
     <p id="confirmSummary">مراجعة محلية فقط.</p>
-    <label class="check-row"><input type="checkbox" id="confirmCheck"><span>أوافق على التكلفة التقديرية، وأفهم أن الموافقة تجريبية ولا ترسل طلب توليد.</span></label>
+    <label class="check-row"><input type="checkbox" id="confirmCheck"><span>أوافق على إرسال طلب حقيقي إلى Magic Hour. قد يستهلك الطلب Credits من حساب المزود، ولن أضغط تأكيد إلا بعد مراجعة إعدادات الفيديو ورصيد الحساب.</span></label>
     <div class="modal-actions">
       <button class="secondary" type="button" id="cancelConfirm">رجوع وتعديل</button>
-      <button class="primary" type="button" id="approveConfirm" disabled>تأكيد تجريبي</button>
+      <button class="primary" type="button" id="approveConfirm" disabled>أوافق وابدأ التوليد</button>
     </div>
   </div>
 </div>
