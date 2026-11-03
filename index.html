@@ -497,7 +497,16 @@ async function refreshAccount() {
     if (!healthResponse.ok) throw new Error('الخادم غير متاح (' + healthResponse.status + ').');
     const health = await healthResponse.json();
     apiStatus.className = 'status success';
-    apiStatus.textContent = 'الخادم متصل: ' + (health.service || 'Capital AI Studio API') + ' — وضع حفظ المسودات.';
+    apiStatus.textContent = 'الخادم متصل: ' + (health.service || 'Capital AI Studio API') + ' — حفظ المسودات وتوليد الفيديو.';
+    const providerHealthResponse = await fetch(apiUrl('/api/provider/health'), { cache: 'no-store' });
+    const providerHealth = await providerHealthResponse.json().catch(() => ({}));
+    if (providerHealth.connected) {
+      engineStatus.className = 'status success';
+      engineStatus.textContent = 'اتصال Magic Hour سليم. سجّل الدخول لبدء إنشاء الفيديو.';
+    } else {
+      engineStatus.className = 'status error';
+      engineStatus.textContent = providerHealth.configured ? 'مفتاح Magic Hour موجود لكن المزود لم يقبله.' : 'مفتاح Magic Hour غير مهيأ على الخادم.';
+    }
     const meResponse = await fetch(apiUrl('/api/me'), { credentials: 'include', cache: 'no-store' });
     const me = await meResponse.json().catch(() => ({}));
     currentUser = me.authenticated ? me.user : null;
