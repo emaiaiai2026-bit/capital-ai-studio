@@ -1,8 +1,8 @@
 import { DurableObject } from "cloudflare:workers";
 
 const TRANSITIONS = Object.freeze({
-  draft: ["queued", "cancelled"],
-  queued: ["processing", "failed", "cancelled"],
+  draft: ["queued", "failed", "cancelled"],
+  queued: ["processing", "completed", "failed", "cancelled"],
   processing: ["completed", "failed"],
   completed: [],
   failed: [],
@@ -116,8 +116,9 @@ export class JobStore extends DurableObject {
           : (row.error_json ? JSON.parse(row.error_json) : null);
         const detailJson = JSON.stringify(detail);
         this.ctx.storage.sql.exec(
-          "UPDATE jobs SET status = ?, output_json = ?, error_json = ?, updated_at = ? WHERE id = ?",
-          nextStatus, output ? JSON.stringify(output) : null,
+          "UPDATE jobs SET status = ?, provider_id = COALESCE(?, provider_id), provider_job_id = COALESCE(?, provider_job_id), output_json = ?, error_json = ?, updated_at = ? WHERE id = ?",
+          nextStatus, detail.providerId || null, detail.providerJobId || null,
+          output ? JSON.stringify(output) : null,
           error ? JSON.stringify(error) : null, now, id
         );
         this.ctx.storage.sql.exec(
