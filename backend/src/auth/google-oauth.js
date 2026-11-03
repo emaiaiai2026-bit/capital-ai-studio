@@ -38,8 +38,8 @@ function cookieValue(request, name) {
   }
   return "";
 }
-function setCookie(name, value, maxAge, httpOnly = true) {
-  return `${name}=${value}; Path=/; Max-Age=${maxAge}; Secure; SameSite=Lax${httpOnly ? "; HttpOnly" : ""}`;
+function setCookie(name, value, maxAge, httpOnly = true, sameSite = "Lax") {
+  return name + "=" + value + "; Path=/; Max-Age=" + maxAge + "; Secure; SameSite=" + sameSite + (httpOnly ? "; HttpOnly" : "");
 }
 function clearCookie(name) {
   return `${name}=; Path=/; Max-Age=0; Secure; SameSite=Lax; HttpOnly`;
@@ -55,8 +55,9 @@ function json(data, status = 200, cookies = []) {
   return new Response(JSON.stringify(data), { status, headers });
 }
 function getRedirectUri(env) {
-  if (!env.APP_ORIGIN) throw new Error("APP_ORIGIN_NOT_CONFIGURED");
-  const origin = new URL(env.APP_ORIGIN);
+  const callbackOrigin = env.API_ORIGIN || env.APP_ORIGIN;
+  if (!callbackOrigin) throw new Error("APP_ORIGIN_NOT_CONFIGURED");
+  const origin = new URL(callbackOrigin);
   if (origin.protocol !== "https:" && origin.hostname !== "localhost") throw new Error("APP_ORIGIN_MUST_USE_HTTPS");
   return new URL("/auth/google/callback", origin).toString();
 }
@@ -147,7 +148,7 @@ export async function handleGoogleAuth(request, env, pathname) {
     const now = Math.floor(Date.now() / 1000);
     const session = await makeSignedCookie({ sub: user.sub, email: user.email, name: user.name, picture: user.picture, iat: now, exp: now + SESSION_SECONDS }, env.SESSION_SECRET);
     return redirect(new URL("/", env.APP_ORIGIN).toString(), [
-      setCookie(COOKIE_NAME, session, SESSION_SECONDS),
+      setCookie(COOKIE_NAME, session, SESSION_SECONDS, true, "None"),
       clearCookie(STATE_COOKIE),
     ]);
   }
