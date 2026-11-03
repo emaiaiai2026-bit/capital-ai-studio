@@ -11,6 +11,12 @@ function json(data, status = 200) {
   });
 }
 
+function hasTrustedOrigin(request, env) {
+  try {
+    return Boolean(env.APP_ORIGIN) && request.headers.get("Origin") === new URL(env.APP_ORIGIN).origin;
+  } catch { return false; }
+}
+
 function parseJobInput(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const prompt = typeof value.prompt === "string" ? value.prompt.trim() : "";
@@ -34,7 +40,10 @@ export default {
       return json({ error: { code: "AUTH_FAILED", message: "Google sign-in could not be completed." } }, 500);
     }
 
-    if (request.method === "POST" && url.pathname === "/auth/logout") return logoutResponse();
+    if (request.method === "POST" && url.pathname === "/auth/logout") {
+      if (!hasTrustedOrigin(request, env)) return json({ error: { code: "ORIGIN_REJECTED" } }, 403);
+      return logoutResponse();
+    }
 
     if (request.method === "GET" && url.pathname === "/api/health") {
       return json({ ok: true, service: "capital-ai-studio-api", mode: "google-auth-job-storage-foundation" });
@@ -49,6 +58,7 @@ export default {
     }
 
     if (request.method === "POST" && url.pathname === "/api/jobs") {
+      if (!hasTrustedOrigin(request, env)) return json({ error: { code: "ORIGIN_REJECTED" } }, 403);
       const user = await getSession(request, env);
       if (!user) return json({ error: { code: "UNAUTHORIZED" } }, 401);
       let body;
