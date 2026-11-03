@@ -1,0 +1,15 @@
+{
+  "name": "capital-ai-studio-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:report": "vitest run --reporter=verbose"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.13.0",
+    "vitest": "^4.1.0",
+    "wrangler": "^4.0.0"
+  }
+}

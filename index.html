@@ -77,8 +77,9 @@ textarea:focus,select:focus{border-color:var(--purple)}
 }
 .drop strong{display:block;margin:8px}
 .drop small{color:var(--muted);font-size:11px}
-.drop input{display:none}
-#preview{max-width:100%;max-height:220px;border-radius:12px;margin-top:14px;display:none}
+.drop input[type="file"]{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.drop:focus-within{outline:2px solid var(--purple);outline-offset:3px}
+#preview{display:none;width:100%;max-width:100%;height:220px;object-fit:contain;object-position:center;margin:14px auto 0;border-radius:12px;background:#0b0b18;padding:6px}
 button {
   border:0;border-radius:12px;padding:14px 18px;
   font:inherit;font-size:14px;font-weight:bold;cursor:pointer;
@@ -93,6 +94,22 @@ button:active{transform:scale(.99)}
 .status.info{display:block;background:#182747;border:1px solid #31538b}
 .status.success{display:block;background:#123328;border:1px solid #286b4d}
 .status.error{display:block;background:#3a1d2a;border:1px solid #84405b}
+.cost-box{background:#101024;border:1px solid #49436f;border-radius:14px;padding:16px;margin-top:18px}
+.cost-line{display:flex;justify-content:space-between;gap:12px;padding:7px 0;color:var(--muted);font-size:13px}
+.cost-line strong{color:var(--text)}
+.cost-total{border-top:1px solid var(--border);margin-top:8px;padding-top:13px;font-size:17px}
+.modal-backdrop{display:none;position:fixed;inset:0;background:#050510dd;z-index:20;align-items:center;justify-content:center;padding:18px}
+.modal-backdrop.open{display:flex}
+.modal{width:min(100%,430px);background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:20px;max-height:90vh;overflow:auto}
+.modal:focus{outline:2px solid var(--purple);outline-offset:4px}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #b79aff;outline-offset:3px}
+button:disabled{opacity:.5;cursor:not-allowed}
+.modal h3{margin:0 0 12px;font-size:18px}
+.modal p{color:var(--muted);font-size:13px;line-height:1.8}
+.modal-actions{display:flex;gap:10px;margin-top:18px}
+.modal-actions button{flex:1}
+.check-row{display:flex;align-items:flex-start;gap:9px;margin-top:14px;font-size:12px;line-height:1.7}
+.check-row input{margin-top:4px}
 .features{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .feature{background:#111126;border:1px solid var(--border);border-radius:14px;padding:16px}
 .feature b{display:block;font-size:13px;margin:10px 0}
@@ -122,8 +139,8 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
 
 <main>
   <section class="hero">
-    <h2>حوّل أفكارك إلى <span>مشاهد سينمائية</span></h2>
-    <p>اكتب فكرتك، وحدد مواصفات الفيديو، وجهّز طلبك للمرحلة التالية من التوليد.</p>
+    <h2>أنشئ فيديو من النص أو حرّك صورة باستخدام LTX-2.5</h2>
+    <p>توليد فعلي عبر مساحة Lightricks الرسمية على Hugging Face باستخدام طابور ZeroGPU المجاني المشترك. قد يتغير وقت الانتظار حسب الضغط والحصة المتاحة.</p>
   </section>
 
   <section class="card">
@@ -139,7 +156,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
       <label class="drop" for="image">
         <div style="font-size:28px">📁</div>
         <strong>اضغط لاختيار صورة من هاتفك</strong>
-        <small>اختيار الصورة لا يعني توليد فيديو منها حتى نربط محرك التوليد.</small>
+        <small>الصورة اختيارية وتُرسل إلى مساحة التوليد عند بدء الطلب.</small>
         <input id="image" type="file" accept="image/png,image/jpeg,image/webp">
         <img id="preview" alt="معاينة الصورة المختارة">
       </label>
@@ -148,9 +165,9 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
   </section>
 
   <section class="card" aria-live="polite">
-    <div class="card-title">🔌 حالة محرك الفيديو والرصيد</div>
-    <div id="engineStatus" class="status info" style="display:block">جارٍ فحص اتصال Magic Hour...</div>
-    <p class="hint">قراءة الرصيد لا تنشئ فيديو ولا تخصم Credits. تكلفة التوليد ستظهر بعد التحقق من الموديل والإعدادات قبل أي طلب.</p>
+    <div class="card-title">🔌 محرك توليد الفيديو</div>
+    <div id="engineStatus" class="status info" style="display:block">جارٍ تجهيز الاتصال بمحرّك LTX-2.5...</div>
+    <p class="hint">المحرك يعمل على Hugging Face ZeroGPU. الطابور والحصة مشتركان وقد يتطلب الأمر الانتظار أو إعادة المحاولة.</p>
   </section>
 
   <section class="card">
@@ -159,12 +176,11 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
       <div class="field">
         <label for="duration">مدة الفيديو</label>
         <select id="duration">
+          <option value="2">2 ثانية</option>
+          <option value="3" selected>3 ثوانٍ</option>
+          <option value="4">4 ثوانٍ</option>
           <option value="5">5 ثوانٍ</option>
-          <option value="10">10 ثوانٍ</option>
-          <option value="15">15 ثانية</option>
-          <option value="30">30 ثانية</option>
-        </select>
-      </div>
+        </select>      </div>
       <div class="field">
         <label for="ratio">أبعاد الفيديو</label>
         <select id="ratio">
@@ -184,15 +200,22 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
         </select>
       </div>
       <div class="field">
-        <label for="quality">الجودة المطلوبة</label>
+        <label for="quality">الدقة</label>
         <select id="quality">
-          <option value="720p">HD — 720p</option>
-          <option value="1080p">Full HD — 1080p</option>
+          <option value="low" selected>اقتصادي — أسرع في الطابور</option>
+          <option value="high">تفاصيل أعلى — يحتاج وقتًا أطول</option>
         </select>
-      </div>
+      </div>    </div>
+    <div class="cost-box" aria-live="polite">
+      <div class="card-title">🆓 طريقة التشغيل</div>
+      <p class="hint">يستخدم المشروع مساحة Lightricks الرسمية LTX-2.5 على Hugging Face ZeroGPU. لا نستخدم مفتاح API مدفوعًا داخل مشروعنا. الخدمة العامة لها طابور وحصة استخدام مشتركة، لذلك لا يوجد ضمان لوقت فوري أو استخدام غير محدود.</p>
+      <p class="hint">النص والصورة المختارة سيتم إرسالهما إلى مساحة Hugging Face لتوليد الفيديو. لا ترفع صورًا خاصة أو لا تملك حق استخدامها.</p>
+      <a href="https://huggingface.co/spaces/Lightricks/LTX-2.5" target="_blank" rel="noopener noreferrer" style="color:#c9b7ff;font-size:12px">فتح مساحة LTX-2.5 الرسمية</a>
     </div>
-    <button class="primary" id="generate">🎬 تجهيز طلب الفيديو</button>
+    <button class="primary" id="generate">ابدأ توليد الفيديو</button>
+    <button class="secondary" id="saveDraftButton" type="button" style="width:100%;margin-top:10px">حفظ الوصف كمسودة على هذا الجهاز</button>
     <div id="status" class="status" role="status" aria-live="polite"></div>
+    <div id="videoResult" class="status info" role="status" aria-live="polite" style="display:none"></div>
   </section>
 
   <section class="card">
@@ -200,122 +223,410 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
     <div class="features">
       <div class="feature">
         <div>✍️</div><b>وصف إلى فيديو</b>
-        <p>تحويل النص المكتوب إلى مشهد متحرك بعد ربط محرك التوليد.</p>
+        <p>متاح الآن: أنشئ فيديو مباشرة من وصفك النصي.</p>
       </div>
       <div class="feature">
         <div>🖼️</div><b>صورة إلى فيديو</b>
-        <p>استخدام صورة مرجعية عند دعم هذه الخاصية من المحرك المختار.</p>
+        <p>متاح الآن: ارفع صورة مرجعية لتحريكها داخل الفيديو.</p>
       </div>
       <div class="feature">
         <div>⚙️</div><b>إعدادات مرنة</b>
-        <p>تحديد المدة والأبعاد والأسلوب والجودة المطلوبة.</p>
+        <p>اختر المدة والأبعاد والدقة المناسبة قبل بدء التوليد.</p>
       </div>
     </div>
   </section>
-</main>
+  <section class="card">
+    <div class="card-title">🗂️ المسودات المحلية</div>
+    <p class="hint">المسودات تُحفظ في متصفح هذا الجهاز فقط، ولا تحتاج إلى تسجيل دخول.</p>
+    <button class="secondary" type="button" id="loadDraftButton">استرجاع آخر مسودة</button>
+    <div id="loadedDraft" class="hint" aria-live="polite"></div>
+  </section>
 
+</main>
+<div class="modal-backdrop" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmSummary">
+  <div class="modal">
+    <h3 id="confirmTitle">مراجعة الطلب قبل الموافقة</h3>
+    <p id="confirmSummary">مراجعة محلية فقط.</p>
+    <label class="check-row"><input type="checkbox" id="confirmCheck"><span>أوافق على إرسال الوصف والصورة المختارة إلى مساحة Lightricks LTX-2.5 العامة على Hugging Face لتوليد الفيديو، وأفهم أن الطابور والحصة مشتركان.</span></label>
+    <div class="modal-actions">
+      <button class="secondary" type="button" id="cancelConfirm">رجوع وتعديل</button>
+      <button class="primary" type="button" id="approveConfirm" disabled>أوافق وابدأ التوليد</button>
+    </div>
+  </div>
+</div>
 <footer>
-  Capital AI Studio © 2026 — واجهة تجريبية قيد التطوير
+  Capital AI Studio © 2026 — توليد فيديو عبر LTX-2.5 على Hugging Face
 </footer>
 
-<script>
-const promptBox = document.getElementById('prompt');
-const count = document.getElementById('count');
-const imageInput = document.getElementById('image');
-const preview = document.getElementById('preview');
-const imageName = document.getElementById('imageName');
-const statusBox = document.getElementById('status');
-const engineStatus = document.getElementById('engineStatus');
+<script type="module">
+import { Client, handle_file } from "https://cdn.jsdelivr.net/npm/@gradio/client@2.7.2/dist/index.min.js";
 
-async function loadEngineBalance() {
-  try {
-    const response = await fetch(API_BASE + '/api/balance');
-    const data = await response.json();
-    if (response.ok && data.ok && data.connected) {
-      engineStatus.className = 'status success';
-      engineStatus.textContent = 'Magic Hour متصل — الرصيد: ' +
-        (data.credits === null ? 'غير متاح' : data.credits + ' Credits') +
-        ' — نوع الحساب: ' + (data.subscriptionTier || 'غير محدد');
-    } else {
-      engineStatus.className = 'status error';
-      engineStatus.textContent = 'تعذر التحقق من رصيد Magic Hour. راجع إعدادات الاتصال قبل التوليد.';
-    }
-  } catch {
-    engineStatus.className = 'status error';
-    engineStatus.textContent = 'تعذر الاتصال بخادم Capital AI Studio لفحص الرصيد.';
-  }
-}
+const SPACE_ID = "Lightricks/LTX-2.5";
+const SPACE_URL = "https://lightricks-ltx-2-5.hf.space";
+let clientPromise = null;
+let apiEndpoint = "/run";
+let previewUrl = null;
 
-promptBox.addEventListener('input', () => {
-  count.textContent = promptBox.value.length;
-});
-
-imageInput.addEventListener('change', () => {
-  const file = imageInput.files[0];
-  preview.style.display = 'none';
-  imageName.textContent = '';
-  if (!file) return;
-  if (file.size > 10 * 1024 * 1024) {
-    imageInput.value = '';
-    showStatus('حجم الصورة أكبر من 10 ميجابايت. اختر صورة أصغر.', 'error');
-    return;
-  }
-  preview.src = URL.createObjectURL(file);
-  preview.style.display = 'block';
-  imageName.textContent = 'الصورة المختارة: ' + file.name;
-});
+const promptBox = document.getElementById("prompt");
+const count = document.getElementById("count");
+const imageInput = document.getElementById("image");
+const preview = document.getElementById("preview");
+const imageName = document.getElementById("imageName");
+const statusBox = document.getElementById("status");
+const engineStatus = document.getElementById("engineStatus");
+const durationSelect = document.getElementById("duration");
+const qualitySelect = document.getElementById("quality");
+const confirmModal = document.getElementById("confirmModal");
+const modalPanel = confirmModal.querySelector(".modal");
+const confirmCheck = document.getElementById("confirmCheck");
+const approveConfirm = document.getElementById("approveConfirm");
+const videoResult = document.getElementById("videoResult");
+const loadedDraft = document.getElementById("loadedDraft");
+let modalReturnFocus = null;
 
 function showStatus(message, type) {
-  statusBox.className = 'status ' + type;
+  statusBox.className = "status " + type;
   statusBox.textContent = message;
 }
 
-const API_BASE = 'https://capital-ai-studio-api.emaiaiai2026.workers.dev';
-loadEngineBalance();
+function buildLocalRequest() {
+  const image = imageInput.files && imageInput.files[0];
+  return {
+    prompt: promptBox.value.trim(),
+    durationSeconds: Number(durationSelect.value),
+    aspectRatio: document.getElementById("ratio").value,
+    visualStyle: document.getElementById("style").value,
+    quality: qualitySelect.value,
+    imageSelected: Boolean(image),
+    imageName: image ? image.name : null
+  };
+}
 
-document.getElementById('generate').addEventListener('click', async () => {
-  const prompt = promptBox.value.trim();
-  if (!prompt) {
-    showStatus('اكتب وصف الفيديو أولًا، وبعدها اضغط على إنشاء الفيديو.', 'error');
+function stylePrefix(style) {
+  const map = {
+    cinematic: "Cinematic realistic visual style.",
+    realistic: "Natural realistic visual style.",
+    animation: "High-quality stylized animation.",
+    documentary: "Documentary visual style.",
+    fantasy: "Cinematic fantasy visual style."
+  };
+  return map[style] || "";
+}
+
+function dimensionsFor(ratio, quality) {
+  const high = quality === "high";
+  const sizes = {
+    "16:9": high ? { height: 832, width: 1472 } : { height: 512, width: 896 },
+    "9:16": high ? { height: 1472, width: 832 } : { height: 896, width: 512 },
+    "1:1": high ? { height: 1024, width: 1024 } : { height: 640, width: 640 }
+  };
+  return sizes[ratio] || sizes["16:9"];
+}
+
+async function connectLtx() {
+  if (!clientPromise) {
+    clientPromise = Client.connect(SPACE_ID, {
+      events: ["status", "data"],
+      space_status: function (state) {
+        if (state && state.message) {
+          engineStatus.className = "status info";
+          engineStatus.textContent = "حالة محرك LTX-2.5: " + state.message;
+        }
+      }
+    }).then(async function (client) {
+      const api = await client.view_api();
+      const names = Object.keys(api.named_endpoints || {});
+      apiEndpoint = names.find(function (name) {
+        return name.toLowerCase().includes("run");
+      }) || names[0] || "/run";
+      engineStatus.className = "status success";
+      engineStatus.textContent = "محرك LTX-2.5 متصل — توليد من النص والصورة متاح عبر ZeroGPU المشترك.";
+      return client;
+    }).catch(function (error) {
+      clientPromise = null;
+      engineStatus.className = "status error";
+      engineStatus.textContent = "تعذر الاتصال بمحرك LTX-2.5: " + (error.message || "حاول مرة أخرى.");
+      throw error;
+    });
+  }
+  return clientPromise;
+}
+
+function closeConfirmModal() {
+  if (!confirmModal.classList.contains("open")) return;
+  confirmModal.classList.remove("open");
+  confirmCheck.checked = false;
+  approveConfirm.disabled = true;
+  document.body.style.overflow = "";
+  if (modalReturnFocus && document.contains(modalReturnFocus)) modalReturnFocus.focus();
+  modalReturnFocus = null;
+}
+
+function openConfirmModal() {
+  modalReturnFocus = document.activeElement;
+  confirmModal.classList.add("open");
+  document.body.style.overflow = "hidden";
+  document.getElementById("cancelConfirm").focus();
+}
+
+function videoUrlFrom(value) {
+  if (typeof value === "string") {
+    if (/^https?:\/\//i.test(value)) return value;
+    return SPACE_URL + "/file=" + value.replace(/^\/+/, "");
+  }
+  if (value && typeof value === "object") {
+    if (value.url) return value.url;
+    if (value.path) {
+      if (/^https?:\/\//i.test(value.path)) return value.path;
+      return SPACE_URL + "/file=" + value.path.replace(/^\/+/, "");
+    }
+  }
+  return null;
+}
+
+function showVideo(data, requestDraft) {
+  const output = Array.isArray(data) ? data[0] : null;
+  const url = videoUrlFrom(output);
+  if (!url) throw new Error("اكتمل رد المحرك لكن رابط الفيديو غير موجود في النتيجة.");
+  videoResult.style.display = "block";
+  videoResult.className = "status success";
+  videoResult.replaceChildren();
+
+  const title = document.createElement("p");
+  title.textContent = "الفيديو جاهز — " + (Array.isArray(data) && data[3] ? data[3] : "LTX-2.5");
+  videoResult.appendChild(title);
+
+  const video = document.createElement("video");
+  video.controls = true;
+  video.playsInline = true;
+  video.preload = "metadata";
+  video.src = url;
+  video.style.width = "100%";
+  video.style.maxHeight = "480px";
+  video.style.borderRadius = "12px";
+  videoResult.appendChild(video);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.textContent = "فتح الفيديو أو تنزيله";
+  link.style.display = "inline-block";
+  link.style.marginTop = "12px";
+  link.style.color = "#ffffff";
+  link.style.textDecoration = "underline";
+  videoResult.appendChild(link);
+
+  try {
+    const history = JSON.parse(localStorage.getItem("capital-ai-studio-history") || "[]");
+    history.unshift({ url: url, prompt: requestDraft.prompt, createdAt: new Date().toISOString() });
+    localStorage.setItem("capital-ai-studio-history", JSON.stringify(history.slice(0, 8)));
+  } catch (_) {}
+}
+
+async function generateVideo() {
+  const requestDraft = buildLocalRequest();
+  const image = imageInput.files && imageInput.files[0];
+  const generateButton = document.getElementById("generate");
+  generateButton.disabled = true;
+  approveConfirm.disabled = true;
+  videoResult.style.display = "none";
+
+  if (!requestDraft.prompt) {
+    showStatus("اكتب وصف الفيديو أولًا.", "error");
+    generateButton.disabled = false;
+    return;
+  }
+
+  if (image && image.size > 10 * 1024 * 1024) {
+    showStatus("حجم الصورة أكبر من 10 ميجابايت. اختر صورة أصغر.", "error");
+    generateButton.disabled = false;
+    return;
+  }
+
+  try {
+    showStatus("جارٍ الاتصال بمساحة Lightricks الرسمية...", "info");
+    const client = await connectLtx();
+    const dims = dimensionsFor(requestDraft.aspectRatio, requestDraft.quality);
+    const prompt = [stylePrefix(requestDraft.visualStyle), requestDraft.prompt].filter(Boolean).join(" ");
+    const imageInputValue = image ? handle_file(image) : null;
+    const payload = [
+      prompt,
+      imageInputValue,
+      dims.height,
+      dims.width,
+      requestDraft.durationSeconds,
+      42,
+      "conv",
+      false,
+      true,
+      false
+    ];
+
+    showStatus("تم إرسال الطلب إلى طابور Hugging Face ZeroGPU. انتظر حتى يبدأ التنفيذ...", "info");
+    const submission = client.submit(apiEndpoint, payload);
+    let resultData = null;
+
+    for await (const message of submission) {
+      if (message.type === "status") {
+        const state = message.status || {};
+        if (state.stage === "pending") {
+          const position = state.position !== undefined && state.position !== null
+            ? " — ترتيبك في الطابور: " + (Number(state.position) + 1)
+            : "";
+          showStatus("طلبك في انتظار دور GPU" + position + (state.eta ? " — الوقت المتوقع " + Math.ceil(state.eta) + " ثانية" : ""), "info");
+        } else if (state.stage === "generating") {
+          showStatus("بدأ توليد الفيديو الآن. قد يستغرق عدة دقائق حسب الضغط والدقة.", "info");
+        } else if (state.stage === "error") {
+          throw new Error(state.message || "تعذر تنفيذ الطلب على مساحة التوليد.");
+        }
+      } else if (message.type === "data") {
+        resultData = message.data;
+      }
+    }
+
+    if (!resultData) throw new Error("انتهى اتصال الطابور دون إرجاع ملف فيديو. جرّب مرة أخرى بعد قليل.");
+    showVideo(resultData, requestDraft);
+    showStatus("اكتمل توليد الفيديو بنجاح. حمّل النتيجة الآن للاحتفاظ بها.", "success");
+  } catch (error) {
+    showStatus(error.message || "تعذر توليد الفيديو. افتح مساحة LTX الرسمية أو أعد المحاولة لاحقًا.", "error");
+  } finally {
+    generateButton.disabled = false;
+  }
+}
+
+promptBox.addEventListener("input", function () {
+  count.textContent = promptBox.value.length;
+});
+
+document.getElementById("generate").addEventListener("click", function () {
+  const requestDraft = buildLocalRequest();
+  if (!requestDraft.prompt) {
+    showStatus("اكتب وصف الفيديو أولًا.", "error");
     promptBox.focus();
     return;
   }
-  if (imageInput.files.length) {
-    showStatus('رفع الصورة محفوظ في الواجهة، لكن محرك الصورة إلى فيديو غير متصل حاليًا. جرّب وصفًا نصيًا فقط.', 'error');
+  document.getElementById("confirmSummary").textContent =
+    "المدة: " + requestDraft.durationSeconds + " ثانية — الأبعاد: " + requestDraft.aspectRatio +
+    " — الدقة: " + (requestDraft.quality === "high" ? "تفاصيل أعلى" : "اقتصادي") +
+    " — صورة مرجعية: " + (requestDraft.imageSelected ? "نعم" : "لا") +
+    ". سيتم إرسال النص والصورة (إن وجدت) إلى مساحة Lightricks LTX-2.5 العامة. الاستخدام عبر طابور ZeroGPU مشترك وقد يتطلب انتظارًا.";
+  confirmCheck.checked = false;
+  approveConfirm.disabled = true;
+  openConfirmModal();
+});
+
+approveConfirm.addEventListener("click", async function () {
+  closeConfirmModal();
+  await generateVideo();
+});
+
+document.getElementById("cancelConfirm").addEventListener("click", closeConfirmModal);
+confirmModal.addEventListener("click", function (event) {
+  if (event.target === confirmModal) closeConfirmModal();
+});
+confirmCheck.addEventListener("change", function () {
+  approveConfirm.disabled = !confirmCheck.checked;
+});
+document.addEventListener("keydown", function (event) {
+  if (!confirmModal.classList.contains("open")) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeConfirmModal();
     return;
   }
-
-  const button = document.getElementById('generate');
-  button.disabled = true;
-  button.textContent = 'جارٍ الاتصال بالخادم...';
-  showStatus('جارٍ إرسال طلبك إلى خادم Capital AI Studio والتحقق من حالة محرك الفيديو...', 'info');
-
-  try {
-    const response = await fetch(API_BASE + '/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        project: 'Capital AI Studio',
-        request_type: 'text_to_video',
-        prompt,
-        duration_seconds: Number(document.getElementById('duration').value),
-        aspect_ratio: document.getElementById('ratio').value,
-        visual_style: document.getElementById('style').value,
-        requested_quality: document.getElementById('quality').value
-      })
-    });
-    const result = await response.json();
-    if (response.ok && result.ok) {
-      showStatus('تم قبول طلب الفيديو من الخادم. ' + (result.message || ''), 'success');
-    } else {
-      showStatus((result.message || result.error || 'الخادم لم يتمكن من إنشاء الفيديو.') + ' — لم يتم إنشاء فيديو ولم يتم خصم أي مبلغ من خلال هذه الواجهة.', 'error');
-    }
-  } catch (error) {
-    showStatus('تعذر الاتصال بخادم التوليد. تحقق من اتصال الإنترنت وحاول لاحقًا. لم يتم إنشاء فيديو.', 'error');
-  } finally {
-    button.disabled = false;
-    button.textContent = '🎬 تجهيز طلب الفيديو';
+  if (event.key !== "Tab") return;
+  const focusable = Array.from(modalPanel.querySelectorAll('button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])')).filter(function (el) {
+    return el.getClientRects().length > 0;
+  });
+  if (!focusable.length) {
+    event.preventDefault();
+    modalPanel.focus();
+    return;
   }
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && (document.activeElement === first || !modalPanel.contains(document.activeElement))) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && (document.activeElement === last || !modalPanel.contains(document.activeElement))) {
+    event.preventDefault();
+    first.focus();
+  }
+});
+
+document.getElementById("saveDraftButton").addEventListener("click", function () {
+  const draft = buildLocalRequest();
+  if (!draft.prompt) {
+    showStatus("اكتب وصفًا قبل حفظ المسودة.", "error");
+    promptBox.focus();
+    return;
+  }
+  try {
+    localStorage.setItem("capital-ai-studio-draft", JSON.stringify(draft));
+    loadedDraft.textContent = "تم حفظ المسودة على هذا الجهاز فقط.";
+    showStatus("تم حفظ المسودة محليًا دون إرسال أي بيانات أو توليد فيديو.", "success");
+  } catch (_) {
+    showStatus("تعذر الحفظ المحلي. تحقق من مساحة التخزين في المتصفح.", "error");
+  }
+});
+
+document.getElementById("loadDraftButton").addEventListener("click", function () {
+  try {
+    const raw = localStorage.getItem("capital-ai-studio-draft");
+    if (!raw) {
+      loadedDraft.textContent = "لا توجد مسودة محفوظة على هذا الجهاز.";
+      return;
+    }
+    const draft = JSON.parse(raw);
+    promptBox.value = draft.prompt || "";
+    count.textContent = promptBox.value.length;
+    durationSelect.value = String(draft.durationSeconds || 3);
+    document.getElementById("ratio").value = draft.aspectRatio || "16:9";
+    document.getElementById("style").value = draft.visualStyle || "cinematic";
+    qualitySelect.value = draft.quality || "low";
+    loadedDraft.textContent = "تم استرجاع آخر مسودة. أعد اختيار الصورة المرجعية إذا كنت تريد استخدامها.";
+    showStatus("تم استرجاع المسودة المحلية.", "success");
+  } catch (_) {
+    loadedDraft.textContent = "تعذر قراءة المسودة المحفوظة.";
+  }
+});
+
+let imagePreviewUrl = null;
+imageInput.addEventListener("change", function () {
+  const file = imageInput.files && imageInput.files[0];
+  if (imagePreviewUrl) {
+    URL.revokeObjectURL(imagePreviewUrl);
+    imagePreviewUrl = null;
+  }
+  preview.removeAttribute("src");
+  preview.style.display = "none";
+  imageName.textContent = "";
+  if (!file) return;
+
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    imageInput.value = "";
+    showStatus("نوع الصورة غير مدعوم. اختر JPG أو PNG أو WebP.", "error");
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    imageInput.value = "";
+    showStatus("حجم الصورة أكبر من 10 ميجابايت. اختر صورة أصغر.", "error");
+    return;
+  }
+  imagePreviewUrl = URL.createObjectURL(file);
+  preview.src = imagePreviewUrl;
+  preview.style.display = "block";
+  imageName.textContent = "الصورة المختارة: " + file.name;
+  showStatus("تم اختيار الصورة. لن تُرفع إلا بعد موافقتك على التوليد.", "success");
+});
+
+window.addEventListener("beforeunload", function () {
+  if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+});
+
+connectLtx().catch(function () {
+  // The official Space may be sleeping; the next Generate click retries the connection.
 });
 </script>
 </body>
