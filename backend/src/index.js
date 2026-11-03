@@ -61,7 +61,7 @@ export default {
       return json({ job, generationStarted: false, note: "Saved as a draft only. No provider was called." }, 201);
     }
 
-    const match = url.pathname.match(/^\\/api\\/jobs\\/([0-9a-f-]{36})$/i);
+    const match = url.pathname.match(/^\/api\/jobs\/([0-9a-f-]{36})$/i);
     if (request.method === "GET" && match) {
       const user = await getSession(request, env);
       if (!user) return json({ error: { code: "UNAUTHORIZED" } }, 401);
