@@ -162,7 +162,7 @@ export default {
 
       try {
         const remote = await provider.createJob({ input, imageFile, name: "Capital AI Studio - " + id });
-        const attached = await store.transitionJob(id, "processing", {
+        const attached = await store.transitionJob(id, "queued", {
           providerId: "magic-hour",
           providerJobId: remote.id,
           creditsCharged: remote.creditsCharged,
