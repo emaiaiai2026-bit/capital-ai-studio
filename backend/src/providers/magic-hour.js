@@ -53,7 +53,7 @@ export function createMagicHourProvider({ apiKey, fetchImpl = fetch } = {}) {
         model: DEFAULT_MODEL,
         resolution: "480p",
         audio: false,
-        style: { prompt: input.prompt },
+        style: { prompt: [input.visualStyle, input.prompt].filter(Boolean).join(". ") },
       };
 
       if (imageFile) {
