@@ -417,7 +417,7 @@ function collectVideoUrls(value, urls, seen) {
       return;
     }
     if (/\.mp4(?:[?#]|$)|\.webm(?:[?#]|$)|\.mov(?:[?#]|$)|(?:^|\/)file=/i.test(raw)) {
-      const path = raw.replace(/^\/+/, "");
+      const path = raw;
       const modern = SPACE_URL + "/gradio_api/file=" + path;
       const legacy = SPACE_URL + "/file=" + path;
       if (!urls.includes(modern)) urls.push(modern);
