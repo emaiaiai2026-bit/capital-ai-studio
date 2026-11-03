@@ -6,7 +6,7 @@ const SESSION_SECONDS = 60 * 60 * 24 * 7;
 function b64url(bytes) {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/=/g, "").replace(/\\+/g, "-").replace(/\\//g, "_");
+  return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 function decodeB64url(value) {
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
@@ -49,8 +49,10 @@ function redirect(url, cookies = []) {
   for (const cookie of cookies) headers.append("Set-Cookie", cookie);
   return new Response(null, { status: 302, headers });
 }
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
+function json(data, status = 200, cookies = []) {
+  const headers = new Headers({ "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+  for (const cookie of cookies) headers.append("Set-Cookie", cookie);
+  return new Response(JSON.stringify(data), { status, headers });
 }
 function getRedirectUri(env) {
   if (!env.APP_ORIGIN) throw new Error("APP_ORIGIN_NOT_CONFIGURED");
@@ -120,10 +122,12 @@ export async function handleGoogleAuth(request, env, pathname) {
 
   if (request.method === "GET" && pathname === "/auth/google/callback") {
     const url = new URL(request.url);
+    const clearState = clearCookie(STATE_COOKIE);
+    if (url.searchParams.has("error")) return json({ error: { code: "GOOGLE_AUTH_CANCELLED" } }, 400, [clearState]);
     const state = await parseSignedCookie(cookieValue(request, STATE_COOKIE), env.SESSION_SECRET);
     const code = url.searchParams.get("code");
     if (!state || state.exp < Date.now() || !code || url.searchParams.get("state") !== state.state) {
-      return json({ error: { code: "OAUTH_STATE_INVALID" } }, 400);
+      return json({ error: { code: "OAUTH_STATE_INVALID" } }, 400, [clearState]);
     }
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
@@ -133,9 +137,9 @@ export async function handleGoogleAuth(request, env, pathname) {
         redirect_uri: redirectUri, grant_type: "authorization_code", code_verifier: state.verifier,
       }),
     });
-    if (!tokenResponse.ok) return json({ error: { code: "GOOGLE_TOKEN_EXCHANGE_FAILED" } }, 401);
+    if (!tokenResponse.ok) return json({ error: { code: "GOOGLE_TOKEN_EXCHANGE_FAILED" } }, 401, [clearState]);
     const tokens = await tokenResponse.json();
-    if (!tokens.id_token) return json({ error: { code: "GOOGLE_ID_TOKEN_MISSING" } }, 401);
+    if (!tokens.id_token) return json({ error: { code: "GOOGLE_ID_TOKEN_MISSING" } }, 401, [clearState]);
     const user = await verifyGoogleIdToken(tokens.id_token, env.GOOGLE_CLIENT_ID, state.nonce);
     const now = Math.floor(Date.now() / 1000);
     const session = await makeSignedCookie({ sub: user.sub, email: user.email, name: user.name, picture: user.picture, iat: now, exp: now + SESSION_SECONDS }, env.SESSION_SECRET);
