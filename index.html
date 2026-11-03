@@ -407,7 +407,16 @@ function collectVideoUrls(value, urls, seen) {
       if (!urls.includes(raw)) urls.push(raw);
       return;
     }
-    if (/\.mp4(?:[?#]|$)|\.webm(?:[?#]|$)|\.mov(?:[?#]|$)|\/file=/i.test(raw)) {
+    if (/^\/(?:gradio_api\/)?file=/i.test(raw)) {
+      const direct = SPACE_URL + raw;
+      if (!urls.includes(direct)) urls.push(direct);
+      if (/^\/file=/i.test(raw)) {
+        const modernDirect = SPACE_URL + "/gradio_api" + raw;
+        if (!urls.includes(modernDirect)) urls.push(modernDirect);
+      }
+      return;
+    }
+    if (/\.mp4(?:[?#]|$)|\.webm(?:[?#]|$)|\.mov(?:[?#]|$)|(?:^|\/)file=/i.test(raw)) {
       const path = raw.replace(/^\/+/, "");
       const modern = SPACE_URL + "/gradio_api/file=" + path;
       const legacy = SPACE_URL + "/file=" + path;
