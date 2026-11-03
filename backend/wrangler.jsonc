@@ -3,7 +3,13 @@
   "name": "capital-ai-studio-api",
   "main": "src/index.js",
   "compatibility_date": "2026-11-03",
-  "observability": {
-    "enabled": true
-  }
+  "observability": { "enabled": true },
+  "durable_objects": {
+    "bindings": [
+      { "name": "JOB_STORE", "class_name": "JobStore" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1-job-store", "new_sqlite_classes": ["JobStore"] }
+  ]
 }
