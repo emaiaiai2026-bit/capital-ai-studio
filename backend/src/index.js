@@ -25,6 +25,21 @@ function json(data, status = 200) {
   });
 }
 
+function addCors(response, request, env) {
+  const origin = request.headers.get("Origin");
+  if (!origin || !env.APP_ORIGIN) return response;
+  try {
+    if (origin !== new URL(env.APP_ORIGIN).origin) return response;
+  } catch { return response; }
+  const headers = new Headers(response.headers);
+  headers.set("Access-Control-Allow-Origin", origin);
+  headers.set("Access-Control-Allow-Credentials", "true");
+  headers.set("Access-Control-Allow-Headers", "Content-Type");
+  headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  headers.append("Vary", "Origin");
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 function hasTrustedOrigin(request, env) {
   try {
     return Boolean(env.APP_ORIGIN) && request.headers.get("Origin") === new URL(env.APP_ORIGIN).origin;
@@ -43,8 +58,7 @@ function parseJobInput(value) {
   return { prompt, durationSeconds, aspectRatio, visualStyle, quality };
 }
 
-export default {
-  async fetch(request, env) {
+async function handleRequest(request, env) {
     const url = new URL(request.url);
     try {
       const authResponse = await handleGoogleAuth(request, env, url.pathname);
@@ -185,5 +199,15 @@ export default {
       }
     }
     return json({ error: { code: "NOT_FOUND", message: "Route not found." } }, 404);
+}
+
+export default {
+  async fetch(request, env) {
+    if (request.method === "OPTIONS") {
+      if (!hasTrustedOrigin(request, env)) return new Response(null, { status: 403 });
+      return addCors(new Response(null, { status: 204 }), request, env);
+    }
+    const response = await handleRequest(request, env);
+    return addCors(response, request, env);
   },
 };
