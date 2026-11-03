@@ -2,7 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 
 const TRANSITIONS = Object.freeze({
   draft: ["queued", "failed", "cancelled"],
-  queued: ["processing", "completed", "failed", "cancelled"],
+  queued: ["queued", "processing", "completed", "failed", "cancelled"],
   processing: ["completed", "failed"],
   completed: [],
   failed: [],
