@@ -98,31 +98,38 @@ export class JobStore extends DurableObject {
 
   transitionJob(id, nextStatus, detail = {}) {
     const now = new Date().toISOString();
-    this.ctx.storage.transactionSync(() => {
-      // Read and validate inside the transaction so status and event cannot diverge.
-      const row = this.ctx.storage.sql.exec(
-        "SELECT status, output_json, error_json FROM jobs WHERE id = ?", id
-      ).toArray()[0];
-      if (!row) throw new Error("JOB_NOT_FOUND");
-      if (!TRANSITIONS[row.status]?.includes(nextStatus)) {
-        throw new Error("INVALID_STATUS_TRANSITION");
-      }
-      const output = nextStatus === "completed" && detail.output
-        ? detail.output
-        : (row.output_json ? JSON.parse(row.output_json) : null);
-      const error = nextStatus === "failed"
-        ? (detail.error || { message: "Provider job failed." })
-        : (row.error_json ? JSON.parse(row.error_json) : null);
-      this.ctx.storage.sql.exec(
-        "UPDATE jobs SET status = ?, output_json = ?, error_json = ?, updated_at = ? WHERE id = ?",
-        nextStatus, output ? JSON.stringify(output) : null,
-        error ? JSON.stringify(error) : null, now, id
-      );
-      this.ctx.storage.sql.exec(
-        "INSERT INTO job_events (job_id, from_status, to_status, detail_json, created_at) VALUES (?, ?, ?, ?, ?)",
-        id, row.status, nextStatus, JSON.stringify(detail), now
-      );
-    });
-    return this.getJob(id);
+    try {
+      this.ctx.storage.transactionSync(() => {
+        // Read and validate inside the transaction so status and event cannot diverge.
+        const row = this.ctx.storage.sql.exec(
+          "SELECT status, output_json, error_json FROM jobs WHERE id = ?", id
+        ).toArray()[0];
+        if (!row) throw new Error("JOB_NOT_FOUND");
+        if (!TRANSITIONS[row.status]?.includes(nextStatus)) {
+          throw new Error("INVALID_STATUS_TRANSITION");
+        }
+        const output = nextStatus === "completed" && detail.output
+          ? detail.output
+          : (row.output_json ? JSON.parse(row.output_json) : null);
+        const error = nextStatus === "failed"
+          ? (detail.error || { message: "Provider job failed." })
+          : (row.error_json ? JSON.parse(row.error_json) : null);
+        const detailJson = JSON.stringify(detail);
+        this.ctx.storage.sql.exec(
+          "UPDATE jobs SET status = ?, output_json = ?, error_json = ?, updated_at = ? WHERE id = ?",
+          nextStatus, output ? JSON.stringify(output) : null,
+          error ? JSON.stringify(error) : null, now, id
+        );
+        this.ctx.storage.sql.exec(
+          "INSERT INTO job_events (job_id, from_status, to_status, detail_json, created_at) VALUES (?, ?, ?, ?, ?)",
+          id, row.status, nextStatus, detailJson, now
+        );
+      });
+      return { ok: true, job: this.getJob(id) };
+    } catch (error) {
+      // Return plain data across the Durable Object RPC boundary; remote thrown
+      // errors are reported as unhandled by the Workers test runtime.
+      return { ok: false, error: error?.message || "JOB_TRANSITION_FAILED" };
+    }
   }
 }
