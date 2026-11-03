@@ -100,6 +100,9 @@ async function verifyGoogleIdToken(token, clientId, expectedNonce) {
 }
 
 export async function handleGoogleAuth(request, env, pathname) {
+  // Only intercept OAuth endpoints. Health and public API routes must remain
+  // reachable while Google credentials are not configured.
+  if (pathname !== "/auth/google/start" && pathname !== "/auth/google/callback") return null;
   if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET || !env.SESSION_SECRET || !env.APP_ORIGIN) {
     return json({ error: { code: "AUTH_NOT_CONFIGURED" } }, 503);
   }
