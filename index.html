@@ -7,18 +7,20 @@
 <title>Capital AI Studio | استوديو صناعة الفيديو</title>
 <style>
 :root {
-  --bg:#0b0b18;
-  --panel:#15152b;
-  --border:#30304b;
-  --text:#f5f4ff;
-  --muted:#aaa9c5;
-  --purple:#8b5cf6;
-  --blue:#4778ff;
+  --bg:#090b13;
+  --panel:#111522;
+  --panel2:#171d2c;
+  --border:#293247;
+  --text:#f4f6fb;
+  --muted:#9ba7bc;
+  --purple:#a78bfa;
+  --blue:#65b8ff;
+  --mint:#7ce7d2;
 }
 * {box-sizing:border-box}
 body {
   margin:0;
-  background:radial-gradient(ellipse at top,#202047 0%,var(--bg) 55%);
+  background:radial-gradient(ellipse at 50% -15%,#29304d 0%,#111522 34%,var(--bg) 72%);
   color:var(--text);
   font-family:Tahoma,Arial,sans-serif;
   min-height:100vh;
@@ -29,13 +31,14 @@ header {
   align-items:center;
   justify-content:space-between;
   gap:15px;
-  border-bottom:1px solid #ffffff12;
+  border-bottom:1px solid #ffffff12;backdrop-filter:blur(18px);
 }
 .logo {display:flex;align-items:center;gap:12px}
 .logo-icon {
-  width:45px;height:45px;border-radius:14px;
+  width:48px;height:48px;border-radius:16px;
   display:grid;place-items:center;font-size:23px;
-  background:linear-gradient(135deg,var(--purple),var(--blue));
+  background:linear-gradient(145deg,#8b5cf6,#397dc7);
+  box-shadow:0 8px 28px #7657dc55;
 }
 .logo h1 {font-size:19px;margin:0 0 5px}
 .logo p {margin:0;font-size:11px;color:var(--muted)}
@@ -43,25 +46,28 @@ header {
   border:1px solid #4b4380;border-radius:30px;
   padding:8px 12px;font-size:12px;color:#d8cbff;
 }
-main {max-width:950px;margin:35px auto;padding:0 16px 50px}
-.hero{text-align:center;margin-bottom:30px}
+main {max-width:1040px;margin:35px auto;padding:0 16px 50px}
+.hero{text-align:center;margin:8px auto 34px;max-width:760px}
+.hero:before{content:"CAPITAL CREATIVE ENGINE  /  LTX-2.5";display:inline-block;color:var(--mint);font-size:10px;letter-spacing:2px;font-weight:bold;border:1px solid #7ce7d233;background:#7ce7d20b;border-radius:30px;padding:8px 14px;margin-bottom:18px}
 .hero h2{font-size:clamp(26px,5vw,39px);margin:0 0 13px}
 .hero h2 span {
   background:linear-gradient(90deg,#b79aff,#70a6ff);
   -webkit-background-clip:text;background-clip:text;color:transparent;
 }
-.hero p{color:var(--muted);line-height:1.9;font-size:14px}
+.hero p{color:var(--muted);line-height:2;font-size:14px;max-width:650px;margin:0 auto}
+.hero h2{letter-spacing:-.7px;line-height:1.35}
 .card {
-  background:#15152beF;
-  border:1px solid var(--border);
-  border-radius:20px;padding:22px;margin-bottom:18px;
-  box-shadow:0 15px 45px #0002;
+  background:linear-gradient(145deg,#171d2bf2,#101522f5);
+  border:1px solid #ffffff13;
+  border-radius:22px;padding:24px;margin-bottom:18px;
+  box-shadow:0 18px 55px #0004, inset 0 1px #ffffff08;
 }
-.card-title{font-size:16px;font-weight:bold;margin-bottom:18px}
+.card-title{font-size:16px;font-weight:bold;margin-bottom:18px;display:flex;align-items:center;gap:9px}
+.card-title:after{content:"";height:1px;flex:1;background:linear-gradient(90deg,#ffffff22,transparent)}
 label{display:block;font-size:13px;margin-bottom:9px;color:#deddf4}
 textarea,select,input[type="text"] {
-  width:100%;border:1px solid var(--border);
-  background:#0e0e20;color:var(--text);
+  width:100%;border:1px solid #35415a;
+  background:#0b101b;color:var(--text);
   border-radius:12px;padding:14px;font:inherit;font-size:14px;
   outline:none;
 }
@@ -71,9 +77,9 @@ textarea:focus,select:focus{border-color:var(--purple)}
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px}
 .field{margin-bottom:18px}
 .drop {
-  border:1px dashed #625b92;border-radius:14px;
+  border:1px dashed #657391;border-radius:16px;
   padding:22px 12px;text-align:center;cursor:pointer;
-  background:#101024;
+  background:#0d1320;
 }
 .drop strong{display:block;margin:8px}
 .drop small{color:var(--muted);font-size:11px}
@@ -85,15 +91,18 @@ button {
   font:inherit;font-size:14px;font-weight:bold;cursor:pointer;
 }
 .primary {
-  width:100%;color:white;
-  background:linear-gradient(100deg,var(--purple),var(--blue));
+  width:100%;color:#07111c;
+  background:linear-gradient(105deg,#b5a1ff,#76c8f4 62%,#8ce8d5);
+  box-shadow:0 9px 25px #6c9fe733;
 }
+.primary:hover{filter:brightness(1.07)}
+.secondary{background:#1a2232;color:#e8edf7;border:1px solid #39465d}
 .secondary{background:#252542;color:white;border:1px solid var(--border)}
 button:active{transform:scale(.99)}
 .status{display:none;margin-top:16px;padding:14px;border-radius:12px;line-height:1.9;font-size:13px}
-.status.info{display:block;background:#182747;border:1px solid #31538b}
-.status.success{display:block;background:#123328;border:1px solid #286b4d}
-.status.error{display:block;background:#3a1d2a;border:1px solid #84405b}
+.status.info{display:block;background:#14263a;border:1px solid #315b7c}
+.status.success{display:block;background:#12342f;border:1px solid #286b62}
+.status.error{display:block;background:#351d2a;border:1px solid #84405b}
 .cost-box{background:#101024;border:1px solid #49436f;border-radius:14px;padding:16px;margin-top:18px}
 .cost-line{display:flex;justify-content:space-between;gap:12px;padding:7px 0;color:var(--muted);font-size:13px}
 .cost-line strong{color:var(--text)}
@@ -110,16 +119,25 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .modal-actions button{flex:1}
 .check-row{display:flex;align-items:flex-start;gap:9px;margin-top:14px;font-size:12px;line-height:1.7}
 .check-row input{margin-top:4px}
-.features{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-.feature{background:#111126;border:1px solid var(--border);border-radius:14px;padding:16px}
-.feature b{display:block;font-size:13px;margin:10px 0}
-.feature p{color:var(--muted);font-size:11px;line-height:1.8;margin:0}
+.idea-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.idea{background:linear-gradient(145deg,#1a2435,#111827);border:1px solid #ffffff15;border-radius:16px;padding:16px;text-align:right;cursor:pointer;transition:.2s}
+.idea:hover{transform:translateY(-2px);border-color:#8b9cc966;background:#202b40}
+.idea b{display:block;font-size:13px;margin:9px 0 5px;color:#f4f6fb}
+.idea small{color:var(--muted);font-size:11px;line-height:1.8}
+.idea-icon{font-size:22px}
+.timer-line{display:none;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding:13px 15px;border:1px solid #ffffff16;border-radius:14px;background:#0c1420}
+.timer-line.active{display:flex}
+.timer-label{font-size:12px;color:#dce5f4}
+.timer-value{font-variant-numeric:tabular-nums;font-size:19px;font-weight:bold;color:var(--mint);direction:ltr;letter-spacing:1px}
+.live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--mint);margin-left:7px;box-shadow:0 0 12px #7ce7d2}
 footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;border-top:1px solid #ffffff12}
 @media(max-width:600px){
   header{padding:15px 4%}
   .logo h1{font-size:15px}
   .badge{font-size:10px;padding:7px}
-  .grid,.features{grid-template-columns:1fr}
+  .grid,.idea-grid{grid-template-columns:1fr}
+  .timer-line{align-items:center}
+  .hero h2{font-size:27px}
   .card{padding:17px}
   main{margin-top:25px}
 }
@@ -215,24 +233,16 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
     <button class="primary" id="generate">ابدأ توليد الفيديو</button>
     <button class="secondary" id="saveDraftButton" type="button" style="width:100%;margin-top:10px">حفظ الوصف كمسودة على هذا الجهاز</button>
     <div id="status" class="status" role="status" aria-live="polite"></div>
+    <div id="timerLine" class="timer-line" aria-live="polite"><span class="timer-label"><i class="live-dot"></i><span id="progressLabel">جاري تجهيز الفيديو</span></span><strong class="timer-value" id="elapsedTimer">00:00</strong></div>
     <div id="videoResult" class="status info" role="status" aria-live="polite" style="display:none"></div>
   </section>
 
   <section class="card">
-    <div class="card-title">🚀 مميزات المنصة المستهدفة</div>
-    <div class="features">
-      <div class="feature">
-        <div>✍️</div><b>وصف إلى فيديو</b>
-        <p>متاح الآن: أنشئ فيديو مباشرة من وصفك النصي.</p>
-      </div>
-      <div class="feature">
-        <div>🖼️</div><b>صورة إلى فيديو</b>
-        <p>متاح الآن: ارفع صورة مرجعية لتحريكها داخل الفيديو.</p>
-      </div>
-      <div class="feature">
-        <div>⚙️</div><b>إعدادات مرنة</b>
-        <p>اختر المدة والأبعاد والدقة المناسبة قبل بدء التوليد.</p>
-      </div>
+    <div class="card-title">✦ أفكار بصرية جاهزة للانطلاق</div>
+    <div class="idea-grid">
+      <button class="idea" type="button" data-prompt="لقطة سينمائية واقعية واسعة لقرية مصرية ريفية بسيطة وقت الشروق. ضوء الشمس الذهبي ينساب فوق الحقول الخضراء والترعة وأشجار النخيل، بيوت ريفية مصرية متواضعة في الخلفية، طيور تحلق بهدوء، نسيم خفيف يحرك الزرع. حركة كاميرا بطيئة وناعمة، ألوان طبيعية وتفاصيل واقعية."><span class="idea-icon">🌅</span><b>صباح في الريف المصري</b><small>شروق ذهبي، حقول، نخيل وهدوء الطبيعة.</small></button>
+      <button class="idea" type="button" data-prompt="لقطة سينمائية واقعية لشارع مصري قديم بعد المطر، انعكاسات أضواء المحلات الدافئة على الأرض، حركة ناس طبيعية في الخلفية، تفاصيل معمارية مصرية أصيلة، حركة كاميرا انسيابية هادئة وألوان واقعية."><span class="idea-icon">🏙️</span><b>حكاية شارع مصري</b><small>تفاصيل يومية واقعية وأجواء سينمائية.</small></button>
+      <button class="idea" type="button" data-prompt="مشهد طبيعي سينمائي واقعي لنهر هادئ بين ضفاف خضراء وقت الفجر، ضباب خفيف فوق سطح الماء، أشعة شمس ناعمة بين الأشجار، طيور بعيدة وحركة ماء طبيعية، لقطة واسعة ثابتة بإحساس وثائقي راقٍ."><span class="idea-icon">🌿</span><b>سكون الطبيعة</b><small>ضباب الفجر، مياه هادئة وضوء ناعم.</small></button>
     </div>
   </section>
   <section class="card">
@@ -283,10 +293,34 @@ const approveConfirm = document.getElementById("approveConfirm");
 const videoResult = document.getElementById("videoResult");
 const loadedDraft = document.getElementById("loadedDraft");
 let modalReturnFocus = null;
+let progressStartedAt = 0;
+let progressTimerHandle = null;
 
 function showStatus(message, type) {
   statusBox.className = "status " + type;
   statusBox.textContent = message;
+}
+function updateElapsedTimer() {
+  const seconds = Math.max(0, Math.floor((Date.now() - progressStartedAt) / 1000));
+  const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
+  const ss = String(seconds % 60).padStart(2, "0");
+  document.getElementById("elapsedTimer").textContent = mm + ":" + ss;
+}
+function startProgressTimer(label) {
+  progressStartedAt = Date.now();
+  document.getElementById("progressLabel").textContent = label || "جاري تجهيز الفيديو";
+  document.getElementById("timerLine").classList.add("active");
+  updateElapsedTimer();
+  clearInterval(progressTimerHandle);
+  progressTimerHandle = setInterval(updateElapsedTimer, 1000);
+}
+function setProgressLabel(label) {
+  document.getElementById("progressLabel").textContent = label;
+}
+function stopProgressTimer() {
+  clearInterval(progressTimerHandle);
+  progressTimerHandle = null;
+  document.getElementById("timerLine").classList.remove("active");
 }
 
 function buildLocalRequest() {
@@ -555,10 +589,12 @@ async function generateVideo() {
   }
 
   try {
-    showStatus("جارٍ الاتصال بمساحة Lightricks الرسمية...", "info");
+    startProgressTimer("جاري تجهيز الفيديو");
+    showStatus("يتم الآن تجهيز طلبك ومحرك الفيديو...", "info");
     const client = await connectLtx();
     const dims = dimensionsFor(requestDraft.aspectRatio, requestDraft.quality);
-    const prompt = [stylePrefix(requestDraft.visualStyle), requestDraft.prompt].filter(Boolean).join(" ");
+    const sceneGuard = "Strictly follow the exact scene, location, time of day, subjects, and visual details described by the user. Preserve the requested setting throughout the entire clip. Do not replace the described scene with an unrelated person, portrait, indoor room, or different location. Do not invent a new main subject or change the time of day. Keep the result visually coherent, natural, and photorealistic unless another style is explicitly requested.";
+    const prompt = [stylePrefix(requestDraft.visualStyle), requestDraft.prompt, sceneGuard].filter(Boolean).join(" ");
     const imageInputValue = image ? handle_file(image) : null;
     const payload = [
       prompt,
@@ -573,7 +609,8 @@ async function generateVideo() {
       false
     ];
 
-    showStatus("تم إرسال الطلب إلى طابور Hugging Face ZeroGPU. سنعرض تحديثات الانتظار والتنفيذ حتى استلام النتيجة...", "info");
+    setProgressLabel("جاري تجهيز الفيديو");
+    showStatus("تم إرسال طلبك. نعمل الآن على تجهيز المشهد...", "info");
     const submission = client.submit(apiEndpoint, payload);
     let resultData = null;
     let lastQueueStatus = null;
@@ -597,13 +634,11 @@ async function generateVideo() {
           lastQueueStatus = state;
 
           if (stage === "pending") {
-            const position = state.position !== undefined && state.position !== null
-              ? " — ترتيبك في الطابور: " + (Number(state.position) + 1)
-              : "";
-            const eta = state.eta ? " — الوقت المتوقع " + Math.ceil(state.eta) + " ثانية" : "";
-            showStatus("طلبك في انتظار دور GPU" + position + eta, "info");
+            setProgressLabel("جاري تجهيز الفيديو");
+            showStatus("يتم تجهيز موارد إنشاء الفيديو. سيظهر الملف هنا فور اكتماله.", "info");
           } else if (stage === "generating") {
-            showStatus("بدأ توليد الفيديو الآن. لا تغلق الصفحة حتى استلام الملف.", "info");
+            setProgressLabel("جاري تحميل الفيديو");
+            showStatus("بدأ إنشاء المشهد. نجهّز ملف الفيديو للعرض هنا...", "info");
           } else if (stage === "error") {
             throw new Error(state.message || state.code || "رفض محرك LTX-2.5 تنفيذ الطلب.");
           } else if (stage === "complete") {
@@ -639,11 +674,13 @@ async function generateVideo() {
         ? "انتهى طلب التوليد دون ملف فيديو: " + detail
         : "انتهى اتصال الطابور دون إرجاع ملف فيديو. لم نعتبر الطلب ناجحًا؛ انتظر قليلًا ثم أعد المحاولة.");
     }
+    setProgressLabel("جاري تحميل الفيديو");
     await showVideo(resultData, requestDraft);
-    showStatus("اكتمل توليد الفيديو بنجاح. حمّل النتيجة الآن للاحتفاظ بها.", "success");
+    showStatus("اكتمل الفيديو وأصبح جاهزًا للمعاينة والتنزيل.", "success");
   } catch (error) {
     showStatus(error.message || "تعذر توليد الفيديو. افتح مساحة LTX الرسمية أو أعد المحاولة لاحقًا.", "error");
   } finally {
+    stopProgressTimer();
     generateButton.disabled = false;
   }
 }
@@ -776,6 +813,16 @@ imageInput.addEventListener("change", function () {
 
 window.addEventListener("beforeunload", function () {
   if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+});
+
+document.querySelectorAll(".idea[data-prompt]").forEach(function (button) {
+  button.addEventListener("click", function () {
+    promptBox.value = button.getAttribute("data-prompt") || "";
+    count.textContent = promptBox.value.length;
+    promptBox.focus();
+    showStatus("تم إدراج فكرة المشهد. يمكنك تعديلها قبل بدء التوليد.", "success");
+    window.scrollTo({ top: promptBox.getBoundingClientRect().top + window.scrollY - 100, behavior: "smooth" });
+  });
 });
 
 connectLtx().catch(function () {
