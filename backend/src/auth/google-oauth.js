@@ -5,7 +5,7 @@ const SESSION_SECONDS = 60 * 60 * 24 * 7;
 
 function b64url(bytes) {
   let binary = "";
-  return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replace(/=/g, "").replace(/\\+/g, "-").replace(/\\//g, "_");
 }
 function decodeB64url(value) {
@@ -87,8 +87,11 @@ async function verifyGoogleIdToken(token, clientId, expectedNonce) {
   const valid = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, decodeB64url(parts[2]), encoder.encode(parts[0] + "." + parts[1]));
   const now = Math.floor(Date.now() / 1000);
   if (!valid || !["https://accounts.google.com", "accounts.google.com"].includes(claims.iss) ||
-      claims.aud !== clientId || !claims.sub || !claims.exp || claims.exp <= now ||
-      claims.iat > now + 60 || claims.nonce !== expectedNonce || claims.email_verified !== true) {
+      !(claims.aud === clientId || (Array.isArray(claims.aud) && claims.aud.includes(clientId))) ||
+      (Array.isArray(claims.aud) && claims.aud.length > 1 && claims.azp !== clientId) ||
+      !claims.sub || claims.sub.length > 255 || !Number.isInteger(claims.exp) || claims.exp <= now ||
+      !Number.isInteger(claims.iat) || claims.iat > now + 60 || claims.iat < now - 3600 ||
+      claims.nonce !== expectedNonce || claims.email_verified !== true) {
     throw new Error("GOOGLE_ID_TOKEN_REJECTED");
   }
   return { sub: claims.sub, email: claims.email, name: claims.name || "", picture: claims.picture || "" };
