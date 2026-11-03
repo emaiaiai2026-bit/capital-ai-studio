@@ -451,11 +451,13 @@ async function refreshAccount() {
     const meResponse = await fetch(apiUrl('/api/me'), { credentials: 'include', cache: 'no-store' });
     const me = await meResponse.json().catch(() => ({}));
     currentUser = me.authenticated ? me.user : null;
-    loginButton.disabled = Boolean(currentUser);
+    loginButton.disabled = Boolean(currentUser) || !health.authConfigured;
     logoutButton.disabled = !currentUser;
     userInfo.textContent = currentUser
       ? 'تم تسجيل الدخول: ' + (currentUser.name || currentUser.email || 'حساب Google')
-      : 'لم يتم تسجيل الدخول. سجّل الدخول بحساب Google لحفظ المسودات واسترجاعها.';
+      : (health.authConfigured
+        ? 'لم يتم تسجيل الدخول. سجّل الدخول بحساب Google لحفظ المسودات واسترجاعها.'
+        : 'الخادم متصل، لكن إعدادات Google OAuth لم تُضف بعد؛ الحفظ محمي ولن يعمل قبل إكمالها.');
   } catch (error) {
     currentUser = null;
     apiStatus.className = 'status error';
