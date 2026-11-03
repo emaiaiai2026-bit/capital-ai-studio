@@ -49,7 +49,7 @@ export default {
     }
 
     if (request.method === "GET" && url.pathname === "/api/health") {
-      return json({ ok: true, service: "capital-ai-studio-api", mode: "google-auth-job-storage-foundation" });
+      return json({ ok: true, service: "capital-ai-studio-api", mode: "draft-storage-only", authConfigured: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET && env.SESSION_SECRET && env.APP_ORIGIN) });
     }
     if (request.method === "GET" && url.pathname === "/api/me") {
       const user = await getSession(request, env);
