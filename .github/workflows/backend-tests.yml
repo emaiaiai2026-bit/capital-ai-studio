@@ -12,6 +12,7 @@ on:
       - feature/magichour-video-generation
     paths:
       - "backend/**"
+      - "index.html"
       - ".github/workflows/backend-tests.yml"
 
 permissions:
