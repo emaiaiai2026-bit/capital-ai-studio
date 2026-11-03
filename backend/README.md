@@ -1,27 +1,31 @@
-# Capital AI Studio — Provider Adapter Foundation
+# Capital AI Studio — Provider-neutral job lifecycle
 
-This backend foundation separates the app API from any video provider.
+This backend stores and reads video job records without depending on a specific generation provider.
 
-## Current routes
-- `GET /api/health` — health response.
-- `GET /api/providers` — lists registered adapters (currently none).
-- `POST /api/jobs` — deliberately returns `503 PROVIDER_NOT_CONFIGURED`.
+## Routes
+- `GET /api/health` — health check.
+- `GET /api/providers` — currently returns an empty provider list.
+- `POST /api/jobs` — validates the request and saves a **draft** job only.
+- `GET /api/jobs/:id` — returns the persisted job and its event history.
+- `POST /api/jobs/submit` — deliberately returns `409 GENERATION_DISABLED`.
 
-## Adapter contract
-Every future adapter must expose:
-- `id`: stable provider identifier.
-- `getCapabilities()`: supported generation modes.
-- `createJob(input)`: submit a provider job.
-- `getJob(providerJobId)`: retrieve provider job status/result.
+## Job lifecycle
+The durable store uses a SQLite-backed Cloudflare Durable Object per job.
+- `draft → queued → processing → completed`
+- A job may transition to `failed` or `cancelled` where appropriate.
+- Terminal states cannot be reopened.
+- Every transition is recorded in `job_events` with a timestamp.
+- The provider-neutral fields are `providerId` and `providerJobId`; they remain null until an adapter is configured.
 
-Provider statuses are normalized to: `queued`, `processing`, `completed`, `failed`, or `unknown`.
+## Current safety state
+- Saving a draft does not contact any provider.
+- No provider adapter is registered.
+- Submission is disabled.
+- No credentials or provider URLs are stored in source.
+- Nothing has been deployed.
 
-## Safety state
-- No provider is registered.
-- No provider URL or credential is present.
-- No generation request can be submitted.
-- No deployment has been performed.
-- Do not add API keys to source control. Cloudflare documents encrypted Worker secrets and recommends keeping secrets out of Wrangler configuration and source files.
+## Important before deployment
+These routes are a development foundation, not production-ready public endpoints. Add user authentication/authorization, ownership checks, request rate limits, retention policy, and operational monitoring before exposing job records on the internet. The current GET route uses an opaque UUID but UUIDs are not authorization. Do not deploy this branch as-is.
 
-## Next implementation phase
-After choosing a provider and confirming its official API access, implement one adapter behind this contract, add authenticated job persistence and polling/webhooks, then connect the UI. Keep each provider isolated so another adapter can be added without changing the app-wide job format.
+## Next
+Add authenticated ownership and a user-scoped job listing, then implement provider adapter submission and polling behind the shared lifecycle contract.
