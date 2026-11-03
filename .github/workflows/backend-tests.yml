@@ -4,12 +4,15 @@ on:
   push:
     branches:
       - fix/jobstore-atomic-tests
+      - feature/huggingface-ltx25-generation
   pull_request:
     branches:
       - main
       - fix/jobstore-atomic-tests
+      - feature/huggingface-ltx25-generation
     paths:
       - "backend/**"
+      - "index.html"
       - ".github/workflows/backend-tests.yml"
 
 permissions:
@@ -33,7 +36,7 @@ jobs:
         run: npm install --no-audit --no-fund --legacy-peer-deps
       - name: Check frontend JavaScript syntax
         run: |
-          node --input-type=module -e "import { readFileSync, writeFileSync } from 'node:fs'; const html = readFileSync('../index.html', 'utf8'); const scripts = [...html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)]; if (!scripts.length) throw new Error('No inline JavaScript found'); writeFileSync('/tmp/capital-ai-studio-inline.js', scripts.map(match => match[1]).join('\\n'));"
+          node --input-type=module -e "import { readFileSync, writeFileSync } from 'node:fs'; const html = readFileSync('../index.html', 'utf8'); const scripts = [...html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)]; if (!scripts.length) throw new Error('No inline JavaScript found'); writeFileSync('/tmp/capital-ai-studio-inline.mjs', scripts.map(match => match[1]).join('\\n'));"
           node --check /tmp/capital-ai-studio-inline.js
       - name: Run tests
         run: npm test
