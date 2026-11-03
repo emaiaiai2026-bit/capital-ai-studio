@@ -203,12 +203,9 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
       <div class="field">
         <label for="quality">الجودة المطلوبة</label>
         <select id="quality">
-          <option value="480p">اقتصادي — 480p</option>
-          <option value="768p" selected>متوازن — 768p</option>
-          <option value="1080p">عالي — 1080p</option>
+          <option value="480p" selected>اقتصادي — 480p</option>
         </select>
-      </div>
-    </div>
+      </div>    </div>
     <div class="cost-box" aria-live="polite">
       <div class="card-title">💳 قبل بدء التوليد</div>
       <p class="hint">سنبدأ بالموديل LTX-2.5 بدقة 480p لتقليل التكلفة. الخصم الفعلي يحدده حساب Magic Hour ويظهر بعد قبول المزود للطلب. راجع رصيدك قبل الموافقة.</p>
@@ -509,8 +506,23 @@ async function refreshAccount() {
     userInfo.textContent = currentUser
       ? 'تم تسجيل الدخول: ' + (currentUser.name || currentUser.email || 'حساب Google')
       : (health.authConfigured
-        ? 'لم يتم تسجيل الدخول. سجّل الدخول بحساب Google لحفظ المسودات واسترجاعها.'
-        : 'الخادم متصل، لكن إعدادات Google OAuth لم تُضف بعد؛ الحفظ محمي ولن يعمل قبل إكمالها.');
+        ? 'لم يتم تسجيل الدخول. سجّل الدخول بحساب Google لحفظ المسودات وبدء التوليد.'
+        : 'الخادم متصل، لكن إعدادات Google OAuth لم تُضف بعد؛ الحفظ والتوليد محميان حتى إكمالها.');
+    if (currentUser) {
+      const accountResponse = await fetch(apiUrl('/api/provider/account'), { credentials: 'include', cache: 'no-store' });
+      const accountData = await accountResponse.json().catch(() => ({}));
+      if (accountResponse.ok && accountData.account) {
+        apiStatus.textContent += ' — رصيد Magic Hour: ' + accountData.account.credits + ' Credits (' + accountData.account.tier + ').';
+        engineStatus.className = 'status success';
+        engineStatus.textContent = 'محرك Magic Hour متصل — LTX-2.5 / 480p — الرصيد متاح.';
+      } else {
+        engineStatus.className = 'status error';
+        engineStatus.textContent = 'تعذر تأكيد حساب Magic Hour: ' + (accountData?.error?.code || 'تحقق من مفتاح المزود.');
+      }
+    } else {
+      engineStatus.className = 'status info';
+      engineStatus.textContent = health.authConfigured ? 'سجّل الدخول لفحص حساب Magic Hour وبدء التوليد.' : 'التوليد ينتظر إعداد Google OAuth.';
+    }
   } catch (error) {
     currentUser = null;
     apiStatus.className = 'status error';
