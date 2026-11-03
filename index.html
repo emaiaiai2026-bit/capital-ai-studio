@@ -218,7 +218,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
       <p class="hint">الأسعار العادية المنشورة لـ Pika H3 Flex بالدولار، وقد تتغير حسب المزود. لا يوجد خصم أو طلب فعلي في وضع المراجعة.</p>
       <p class="hint">العرض المؤقت حتى 5 نوفمبر 2026 غير محسوب كسعر دائم.</p>
     </div>
-    <button class="primary" id="generate">مراجعة التكلفة والموافقة (تجريبي)</button>
+    <button class="primary" id="generate">مراجعة التكلفة وحفظ المسودة</button>
     <div id="status" class="status" role="status" aria-live="polite"></div>
   </section>
 
@@ -239,6 +239,22 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
       </div>
     </div>
   </section>
+  <section class="card" id="accountPanel">
+    <div class="card-title">🔐 الاتصال والحساب وحفظ المسودات</div>
+    <div id="apiStatus" class="status info" style="display:block">جارٍ فحص اتصال الخادم...</div>
+    <div class="grid">
+      <button class="secondary" type="button" id="loginButton">تسجيل الدخول بحساب Google</button>
+      <button class="secondary" type="button" id="logoutButton" disabled>تسجيل الخروج</button>
+    </div>
+    <p id="userInfo" class="hint">لن يتم حفظ الطلبات إلا بعد تسجيل الدخول.</p>
+    <div class="field">
+      <label for="savedJobId">رقم المسودة لاسترجاعها</label>
+      <input id="savedJobId" type="text" placeholder="سيظهر رقم المسودة بعد الحفظ">
+    </div>
+    <button class="secondary" type="button" id="loadDraftButton">استرجاع المسودة</button>
+    <div id="loadedDraft" class="hint" aria-live="polite"></div>
+    <p class="hint">الحفظ ينشئ مسودة فقط. لا يتم إرسالها لمحرك توليد أو إنشاء فيديو أو خصم رصيد.</p>
+  </section>
 </main>
 <div class="modal-backdrop" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmSummary">
   <div class="modal">
@@ -256,6 +272,16 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
 </footer>
 
 <script>
+const API_BASE = (window.CAPITAL_API_BASE || '').replace(/\/$/, '');
+const apiUrl = (path) => API_BASE + path;
+let currentUser = null;
+const apiStatus = document.getElementById('apiStatus');
+const userInfo = document.getElementById('userInfo');
+const loginButton = document.getElementById('loginButton');
+const logoutButton = document.getElementById('logoutButton');
+const savedJobId = document.getElementById('savedJobId');
+const loadedDraft = document.getElementById('loadedDraft');
+const loadDraftButton = document.getElementById('loadDraftButton');
 const promptBox = document.getElementById('prompt');
 const count = document.getElementById('count');
 const imageInput = document.getElementById('image');
@@ -388,10 +414,94 @@ document.getElementById('generate').addEventListener('click', () => {
   approveConfirm.disabled = true;
   openConfirmModal();
 });
-approveConfirm.addEventListener('click', () => {
+approveConfirm.addEventListener('click', async () => {
   closeConfirmModal();
-  showStatus('تم تسجيل الموافقة التجريبية محليًا فقط. لم يتم إرسال بيانات أو إنشاء فيديو أو خصم رصيد.', 'success');
+  const requestDraft = buildLocalRequest();
+  try {
+    if (!currentUser) throw new Error('سجّل الدخول أولًا حتى نستطيع حفظ المسودة بأمان.');
+    const response = await fetch(apiUrl('/api/jobs'), {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        prompt: requestDraft.prompt,
+        durationSeconds: requestDraft.durationSeconds,
+        aspectRatio: requestDraft.aspectRatio,
+        visualStyle: requestDraft.visualStyle,
+        quality: requestDraft.quality
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data?.error?.message || data?.error?.code || 'تعذر حفظ المسودة.');
+    savedJobId.value = data.job.id;
+    showStatus('تم حفظ المسودة بنجاح. رقمها: ' + data.job.id + ' — لم يبدأ التوليد ولم يُخصم أي رصيد.', 'success');
+    await refreshAccount();
+  } catch (error) {
+    showStatus(error.message || 'حدث خطأ أثناء حفظ المسودة.', 'error');
+  }
 });
+
+async function refreshAccount() {
+  try {
+    const healthResponse = await fetch(apiUrl('/api/health'), { cache: 'no-store' });
+    if (!healthResponse.ok) throw new Error('الخادم غير متاح (' + healthResponse.status + ').');
+    const health = await healthResponse.json();
+    apiStatus.className = 'status success';
+    apiStatus.textContent = 'الخادم متصل: ' + (health.service || 'Capital AI Studio API') + ' — وضع حفظ المسودات.';
+    const meResponse = await fetch(apiUrl('/api/me'), { credentials: 'include', cache: 'no-store' });
+    const me = await meResponse.json().catch(() => ({}));
+    currentUser = me.authenticated ? me.user : null;
+    loginButton.disabled = Boolean(currentUser);
+    logoutButton.disabled = !currentUser;
+    userInfo.textContent = currentUser
+      ? 'تم تسجيل الدخول: ' + (currentUser.name || currentUser.email || 'حساب Google')
+      : 'لم يتم تسجيل الدخول. سجّل الدخول بحساب Google لحفظ المسودات واسترجاعها.';
+  } catch (error) {
+    currentUser = null;
+    apiStatus.className = 'status error';
+    apiStatus.textContent = 'تعذر الاتصال بالخادم: ' + (error.message || 'تحقق من إعداد API.');
+    loginButton.disabled = true;
+    logoutButton.disabled = true;
+    userInfo.textContent = 'يجب ربط الواجهة بعنوان Backend صالح قبل تسجيل الدخول.';
+  }
+}
+loginButton.addEventListener('click', () => {
+  window.location.href = apiUrl('/auth/google/start');
+});
+logoutButton.addEventListener('click', async () => {
+  try {
+    await fetch(apiUrl('/auth/logout'), { method: 'POST', credentials: 'include' });
+  } finally {
+    currentUser = null;
+    await refreshAccount();
+  }
+});
+loadDraftButton.addEventListener('click', async () => {
+  const id = savedJobId.value.trim();
+  if (!id) { loadedDraft.textContent = 'أدخل رقم المسودة أولًا.'; return; }
+  if (!currentUser) { loadedDraft.textContent = 'سجّل الدخول أولًا لاسترجاع مسودات حسابك.'; return; }
+  loadDraftButton.disabled = true;
+  try {
+    const response = await fetch(apiUrl('/api/jobs/' + encodeURIComponent(id)), { credentials: 'include', cache: 'no-store' });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data?.error?.code || 'تعذر استرجاع المسودة.');
+    const job = data.job;
+    promptBox.value = job.input.prompt || '';
+    count.textContent = promptBox.value.length;
+    durationSelect.value = String(job.input.durationSeconds);
+    document.getElementById('ratio').value = job.input.aspectRatio;
+    document.getElementById('style').value = job.input.visualStyle;
+    qualitySelect.value = job.input.quality;
+    updateCost();
+    loadedDraft.textContent = 'تم استرجاع المسودة: ' + job.id + ' — الحالة: ' + job.status + ' — تاريخ الإنشاء: ' + job.createdAt;
+    showStatus('تم استرجاع بيانات المسودة. لا يوجد فيديو مولّد.', 'success');
+  } catch (error) {
+    loadedDraft.textContent = error.message || 'حدث خطأ أثناء الاسترجاع.';
+  } finally {
+    loadDraftButton.disabled = false;
+  }
+});
+refreshAccount();
 
 let previewUrl = null;
 imageInput.addEventListener('change', () => {
