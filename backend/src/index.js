@@ -1,5 +1,8 @@
 import { createProviderRegistry } from "./providers/registry.js";
 import { JobStore } from "./jobs/job-store.js";
+
+// Wrangler binds this Durable Object by its named export from the Worker entrypoint.
+export { JobStore };
 import { handleGoogleAuth, getSession, logoutResponse } from "./auth/google-oauth.js";
 
 const registry = createProviderRegistry([]);
