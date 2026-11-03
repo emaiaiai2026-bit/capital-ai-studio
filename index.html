@@ -259,117 +259,287 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
   Capital AI Studio © 2026 — واجهة تجريبية قيد التطوير
 </footer>
 
-<script>
-const API_BASE = (window.CAPITAL_API_BASE || '').replace(/\/$/, '');
-const apiUrl = (path) => API_BASE + path;
-let currentUser = null;
-const apiStatus = document.getElementById('apiStatus');
-const userInfo = document.getElementById('userInfo');
-const loginButton = document.getElementById('loginButton');
-const logoutButton = document.getElementById('logoutButton');
-const savedJobId = document.getElementById('savedJobId');
-const loadedDraft = document.getElementById('loadedDraft');
-const loadDraftButton = document.getElementById('loadDraftButton');
-const promptBox = document.getElementById('prompt');
-const count = document.getElementById('count');
-const imageInput = document.getElementById('image');
-const preview = document.getElementById('preview');
-const imageName = document.getElementById('imageName');
-const statusBox = document.getElementById('status');
-const engineStatus = document.getElementById('engineStatus');
-const durationSelect = document.getElementById('duration');
-const qualitySelect = document.getElementById('quality');
-const confirmModal = document.getElementById('confirmModal');
-const modalPanel = confirmModal.querySelector('.modal');
-let modalReturnFocus = null;
-const confirmCheck = document.getElementById('confirmCheck');
-const approveConfirm = document.getElementById('approveConfirm');
-const rates = {'480p':0.02,'768p':0.04,'1080p':0.07};
-const qualityNames = {'480p':'اقتصادي','768p':'متوازن','1080p':'عالي'};
+<script type="module">
+import { Client, handle_file } from "https://cdn.jsdelivr.net/npm/@gradio/client@2.7.2/dist/index.min.js";
 
-function money(n) {
-  return '$' + n.toFixed(3).replace(/0+$/,'').replace(/\.$/,'');
-}
-function updateCost() {
-  const seconds = Number(durationSelect.value);
-  const quality = qualitySelect.value;
-  const rate = rates[quality];
-  const total = seconds * rate;
-  document.getElementById('costDuration').textContent = seconds + ' ثانية';
-  document.getElementById('costQuality').textContent = quality + ' — ' + qualityNames[quality];
-  document.getElementById('costRate').textContent = money(rate);
-  document.getElementById('costTotal').textContent = money(total);
-  return {seconds, quality, total};
+const SPACE_ID = "Lightricks/LTX-2.5";
+const SPACE_URL = "https://lightricks-ltx-2-5.hf.space";
+let clientPromise = null;
+let apiEndpoint = "/run";
+let previewUrl = null;
+
+const promptBox = document.getElementById("prompt");
+const count = document.getElementById("count");
+const imageInput = document.getElementById("image");
+const preview = document.getElementById("preview");
+const imageName = document.getElementById("imageName");
+const statusBox = document.getElementById("status");
+const engineStatus = document.getElementById("engineStatus");
+const durationSelect = document.getElementById("duration");
+const qualitySelect = document.getElementById("quality");
+const confirmModal = document.getElementById("confirmModal");
+const modalPanel = confirmModal.querySelector(".modal");
+const confirmCheck = document.getElementById("confirmCheck");
+const approveConfirm = document.getElementById("approveConfirm");
+const videoResult = document.getElementById("videoResult");
+const loadedDraft = document.getElementById("loadedDraft");
+let modalReturnFocus = null;
+
+function showStatus(message, type) {
+  statusBox.className = "status " + type;
+  statusBox.textContent = message;
 }
 
 function buildLocalRequest() {
-  const quote = updateCost();
-  const selectedImage = imageInput.files && imageInput.files[0];
+  const image = imageInput.files && imageInput.files[0];
   return {
     prompt: promptBox.value.trim(),
-    durationSeconds: quote.seconds,
-    aspectRatio: document.getElementById('ratio').value,
-    visualStyle: document.getElementById('style').value,
-    quality: quote.quality,
-    estimatedCostUsd: Number(quote.total.toFixed(3)),
-    referenceImage: selectedImage ? {
-      selected: true,
-      fileName: selectedImage.name,
-      mimeType: selectedImage.type,
-      sizeBytes: selectedImage.size
-    } : {selected: false},
-    reviewOnly: true,
-    generationEnabled: false
+    durationSeconds: Number(durationSelect.value),
+    aspectRatio: document.getElementById("ratio").value,
+    visualStyle: document.getElementById("style").value,
+    quality: qualitySelect.value,
+    imageSelected: Boolean(image),
+    imageName: image ? image.name : null
   };
 }
-function showStatus(message, type) {
-  statusBox.className = 'status ' + type;
-  statusBox.textContent = message;
-}
-function loadEngineBalance() {
-  engineStatus.className = 'status info';
-  engineStatus.textContent = 'فحص الرصيد متوقف مؤقتًا في وضع المراجعة. لم يتم إرسال أي طلب إلى محرك التوليد.';
+
+function stylePrefix(style) {
+  const map = {
+    cinematic: "Cinematic realistic visual style.",
+    realistic: "Natural realistic visual style.",
+    animation: "High-quality stylized animation.",
+    documentary: "Documentary visual style.",
+    fantasy: "Cinematic fantasy visual style."
+  };
+  return map[style] || "";
 }
 
-promptBox.addEventListener('input', () => {
-  count.textContent = promptBox.value.length;
-});
-durationSelect.addEventListener('change', updateCost);
-qualitySelect.addEventListener('change', updateCost);
-updateCost();
-loadEngineBalance();
+function dimensionsFor(ratio, quality) {
+  const high = quality === "high";
+  const sizes = {
+    "16:9": high ? { height: 832, width: 1472 } : { height: 512, width: 896 },
+    "9:16": high ? { height: 1472, width: 832 } : { height: 896, width: 512 },
+    "1:1": high ? { height: 1024, width: 1024 } : { height: 640, width: 640 }
+  };
+  return sizes[ratio] || sizes["16:9"];
+}
 
-confirmCheck.addEventListener('change', () => {
-  approveConfirm.disabled = !confirmCheck.checked;
-});
+async function connectLtx() {
+  if (!clientPromise) {
+    clientPromise = Client.connect(SPACE_ID, {
+      events: ["status", "data"],
+      space_status: function (state) {
+        if (state && state.message) {
+          engineStatus.className = "status info";
+          engineStatus.textContent = "حالة محرك LTX-2.5: " + state.message;
+        }
+      }
+    }).then(async function (client) {
+      const api = await client.view_api();
+      const names = Object.keys(api.named_endpoints || {});
+      apiEndpoint = names.find(function (name) {
+        return name.toLowerCase().includes("run");
+      }) || names[0] || "/run";
+      engineStatus.className = "status success";
+      engineStatus.textContent = "محرك LTX-2.5 متصل — توليد من النص والصورة متاح عبر ZeroGPU المشترك.";
+      return client;
+    }).catch(function (error) {
+      clientPromise = null;
+      engineStatus.className = "status error";
+      engineStatus.textContent = "تعذر الاتصال بمحرك LTX-2.5: " + (error.message || "حاول مرة أخرى.");
+      throw error;
+    });
+  }
+  return clientPromise;
+}
+
 function closeConfirmModal() {
-  if (!confirmModal.classList.contains('open')) return;
-  confirmModal.classList.remove('open');
+  if (!confirmModal.classList.contains("open")) return;
+  confirmModal.classList.remove("open");
   confirmCheck.checked = false;
   approveConfirm.disabled = true;
-  document.body.style.overflow = '';
+  document.body.style.overflow = "";
   if (modalReturnFocus && document.contains(modalReturnFocus)) modalReturnFocus.focus();
   modalReturnFocus = null;
 }
+
 function openConfirmModal() {
   modalReturnFocus = document.activeElement;
-  confirmModal.classList.add('open');
-  document.body.style.overflow = 'hidden';
-  document.getElementById('cancelConfirm').focus();
+  confirmModal.classList.add("open");
+  document.body.style.overflow = "hidden";
+  document.getElementById("cancelConfirm").focus();
 }
-document.getElementById('cancelConfirm').addEventListener('click', closeConfirmModal);
-confirmModal.addEventListener('click', (event) => {
+
+function videoUrlFrom(value) {
+  if (typeof value === "string") {
+    if (/^https?:\/\//i.test(value)) return value;
+    return SPACE_URL + "/file=" + value.replace(/^\/+/, "");
+  }
+  if (value && typeof value === "object") {
+    if (value.url) return value.url;
+    if (value.path) {
+      if (/^https?:\/\//i.test(value.path)) return value.path;
+      return SPACE_URL + "/file=" + value.path.replace(/^\/+/, "");
+    }
+  }
+  return null;
+}
+
+function showVideo(data, requestDraft) {
+  const output = Array.isArray(data) ? data[0] : null;
+  const url = videoUrlFrom(output);
+  if (!url) throw new Error("اكتمل رد المحرك لكن رابط الفيديو غير موجود في النتيجة.");
+  videoResult.style.display = "block";
+  videoResult.className = "status success";
+  videoResult.replaceChildren();
+
+  const title = document.createElement("p");
+  title.textContent = "الفيديو جاهز — " + (Array.isArray(data) && data[3] ? data[3] : "LTX-2.5");
+  videoResult.appendChild(title);
+
+  const video = document.createElement("video");
+  video.controls = true;
+  video.playsInline = true;
+  video.preload = "metadata";
+  video.src = url;
+  video.style.width = "100%";
+  video.style.maxHeight = "480px";
+  video.style.borderRadius = "12px";
+  videoResult.appendChild(video);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.textContent = "فتح الفيديو أو تنزيله";
+  link.style.display = "inline-block";
+  link.style.marginTop = "12px";
+  link.style.color = "#ffffff";
+  link.style.textDecoration = "underline";
+  videoResult.appendChild(link);
+
+  try {
+    const history = JSON.parse(localStorage.getItem("capital-ai-studio-history") || "[]");
+    history.unshift({ url: url, prompt: requestDraft.prompt, createdAt: new Date().toISOString() });
+    localStorage.setItem("capital-ai-studio-history", JSON.stringify(history.slice(0, 8)));
+  } catch (_) {}
+}
+
+async function generateVideo() {
+  const requestDraft = buildLocalRequest();
+  const image = imageInput.files && imageInput.files[0];
+  const generateButton = document.getElementById("generate");
+  generateButton.disabled = true;
+  approveConfirm.disabled = true;
+  videoResult.style.display = "none";
+
+  if (!requestDraft.prompt) {
+    showStatus("اكتب وصف الفيديو أولًا.", "error");
+    generateButton.disabled = false;
+    return;
+  }
+
+  if (image && image.size > 10 * 1024 * 1024) {
+    showStatus("حجم الصورة أكبر من 10 ميجابايت. اختر صورة أصغر.", "error");
+    generateButton.disabled = false;
+    return;
+  }
+
+  try {
+    showStatus("جارٍ الاتصال بمساحة Lightricks الرسمية...", "info");
+    const client = await connectLtx();
+    const dims = dimensionsFor(requestDraft.aspectRatio, requestDraft.quality);
+    const prompt = [stylePrefix(requestDraft.visualStyle), requestDraft.prompt].filter(Boolean).join(" ");
+    const imageInputValue = image ? handle_file(image) : null;
+    const payload = [
+      prompt,
+      imageInputValue,
+      dims.height,
+      dims.width,
+      requestDraft.durationSeconds,
+      42,
+      "conv",
+      false,
+      true,
+      false
+    ];
+
+    showStatus("تم إرسال الطلب إلى طابور Hugging Face ZeroGPU. انتظر حتى يبدأ التنفيذ...", "info");
+    const submission = client.submit(apiEndpoint, payload);
+    let resultData = null;
+
+    for await (const message of submission) {
+      if (message.type === "status") {
+        const state = message.status || {};
+        if (state.stage === "pending") {
+          const position = state.position !== undefined && state.position !== null
+            ? " — ترتيبك في الطابور: " + (Number(state.position) + 1)
+            : "";
+          showStatus("طلبك في انتظار دور GPU" + position + (state.eta ? " — الوقت المتوقع " + Math.ceil(state.eta) + " ثانية" : ""), "info");
+        } else if (state.stage === "generating") {
+          showStatus("بدأ توليد الفيديو الآن. قد يستغرق عدة دقائق حسب الضغط والدقة.", "info");
+        } else if (state.stage === "error") {
+          throw new Error(state.message || "تعذر تنفيذ الطلب على مساحة التوليد.");
+        }
+      } else if (message.type === "data") {
+        resultData = message.data;
+      }
+    }
+
+    if (!resultData) throw new Error("انتهى اتصال الطابور دون إرجاع ملف فيديو. جرّب مرة أخرى بعد قليل.");
+    showVideo(resultData, requestDraft);
+    showStatus("اكتمل توليد الفيديو بنجاح. حمّل النتيجة الآن للاحتفاظ بها.", "success");
+  } catch (error) {
+    showStatus(error.message || "تعذر توليد الفيديو. افتح مساحة LTX الرسمية أو أعد المحاولة لاحقًا.", "error");
+  } finally {
+    generateButton.disabled = false;
+  }
+}
+
+promptBox.addEventListener("input", function () {
+  count.textContent = promptBox.value.length;
+});
+
+document.getElementById("generate").addEventListener("click", function () {
+  const requestDraft = buildLocalRequest();
+  if (!requestDraft.prompt) {
+    showStatus("اكتب وصف الفيديو أولًا.", "error");
+    promptBox.focus();
+    return;
+  }
+  document.getElementById("confirmSummary").textContent =
+    "المدة: " + requestDraft.durationSeconds + " ثانية — الأبعاد: " + requestDraft.aspectRatio +
+    " — الدقة: " + (requestDraft.quality === "high" ? "تفاصيل أعلى" : "اقتصادي") +
+    " — صورة مرجعية: " + (requestDraft.imageSelected ? "نعم" : "لا") +
+    ". سيتم إرسال النص والصورة (إن وجدت) إلى مساحة Lightricks LTX-2.5 العامة. الاستخدام عبر طابور ZeroGPU مشترك وقد يتطلب انتظارًا.";
+  confirmCheck.checked = false;
+  approveConfirm.disabled = true;
+  openConfirmModal();
+});
+
+approveConfirm.addEventListener("click", async function () {
+  closeConfirmModal();
+  await generateVideo();
+});
+
+document.getElementById("cancelConfirm").addEventListener("click", closeConfirmModal);
+confirmModal.addEventListener("click", function (event) {
   if (event.target === confirmModal) closeConfirmModal();
 });
-document.addEventListener('keydown', (event) => {
-  if (!confirmModal.classList.contains('open')) return;
-  if (event.key === 'Escape') {
+confirmCheck.addEventListener("change", function () {
+  approveConfirm.disabled = !confirmCheck.checked;
+});
+document.addEventListener("keydown", function (event) {
+  if (!confirmModal.classList.contains("open")) return;
+  if (event.key === "Escape") {
     event.preventDefault();
     closeConfirmModal();
     return;
   }
-  if (event.key !== 'Tab') return;
-  const focusable = Array.from(modalPanel.querySelectorAll('button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])')).filter(el => el.getClientRects().length > 0);
+  if (event.key !== "Tab") return;
+  const focusable = Array.from(modalPanel.querySelectorAll('button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])')).filter(function (el) {
+    return el.getClientRects().length > 0;
+  });
   if (!focusable.length) {
     event.preventDefault();
     modalPanel.focus();
@@ -385,145 +555,79 @@ document.addEventListener('keydown', (event) => {
     first.focus();
   }
 });
-document.getElementById('generate').addEventListener('click', () => {
-  if (!promptBox.value.trim()) {
-    showStatus('اكتب وصفًا أولًا، ثم راجع التكلفة.', 'error');
+
+document.getElementById("saveDraftButton").addEventListener("click", function () {
+  const draft = buildLocalRequest();
+  if (!draft.prompt) {
+    showStatus("اكتب وصفًا قبل حفظ المسودة.", "error");
     promptBox.focus();
     return;
   }
-  const requestDraft = buildLocalRequest();
-  document.getElementById('confirmSummary').textContent =
-    'المدة: ' + requestDraft.durationSeconds + ' ثانية — الأبعاد: ' + requestDraft.aspectRatio +
-    ' — الأسلوب: ' + requestDraft.visualStyle + ' — الجودة: ' + requestDraft.quality +
-    ' — الصورة المرجعية: ' + (requestDraft.referenceImage.selected ? 'مختارة محليًا' : 'غير مختارة') +
-    ' — التكلفة التقديرية: ' + money(requestDraft.estimatedCostUsd) +
-    '. هذه معاينة بيانات محلية فقط؛ لن يتم إرسال طلب أو رفع صورة أو إنشاء فيديو أو خصم رصيد.';
-  confirmCheck.checked = false;
-  approveConfirm.disabled = true;
-  openConfirmModal();
-});
-approveConfirm.addEventListener('click', async () => {
-  closeConfirmModal();
-  const requestDraft = buildLocalRequest();
   try {
-    if (!currentUser) throw new Error('سجّل الدخول أولًا حتى نستطيع حفظ المسودة بأمان.');
-    const response = await fetch(apiUrl('/api/jobs'), {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        prompt: requestDraft.prompt,
-        durationSeconds: requestDraft.durationSeconds,
-        aspectRatio: requestDraft.aspectRatio,
-        visualStyle: requestDraft.visualStyle,
-        quality: requestDraft.quality
-      })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data?.error?.message || data?.error?.code || 'تعذر حفظ المسودة.');
-    savedJobId.value = data.job.id;
-    showStatus('تم حفظ المسودة بنجاح. رقمها: ' + data.job.id + ' — لم يبدأ التوليد ولم يُخصم أي رصيد.', 'success');
-    await refreshAccount();
-  } catch (error) {
-    showStatus(error.message || 'حدث خطأ أثناء حفظ المسودة.', 'error');
+    localStorage.setItem("capital-ai-studio-draft", JSON.stringify(draft));
+    loadedDraft.textContent = "تم حفظ المسودة على هذا الجهاز فقط.";
+    showStatus("تم حفظ المسودة محليًا دون إرسال أي بيانات أو توليد فيديو.", "success");
+  } catch (_) {
+    showStatus("تعذر الحفظ المحلي. تحقق من مساحة التخزين في المتصفح.", "error");
   }
 });
 
-async function refreshAccount() {
+document.getElementById("loadDraftButton").addEventListener("click", function () {
   try {
-    const healthResponse = await fetch(apiUrl('/api/health'), { cache: 'no-store' });
-    if (!healthResponse.ok) throw new Error('الخادم غير متاح (' + healthResponse.status + ').');
-    const health = await healthResponse.json();
-    apiStatus.className = 'status success';
-    apiStatus.textContent = 'الخادم متصل: ' + (health.service || 'Capital AI Studio API') + ' — وضع حفظ المسودات.';
-    const meResponse = await fetch(apiUrl('/api/me'), { credentials: 'include', cache: 'no-store' });
-    const me = await meResponse.json().catch(() => ({}));
-    currentUser = me.authenticated ? me.user : null;
-    loginButton.disabled = Boolean(currentUser) || !health.authConfigured;
-    logoutButton.disabled = !currentUser;
-    userInfo.textContent = currentUser
-      ? 'تم تسجيل الدخول: ' + (currentUser.name || currentUser.email || 'حساب Google')
-      : (health.authConfigured
-        ? 'لم يتم تسجيل الدخول. سجّل الدخول بحساب Google لحفظ المسودات واسترجاعها.'
-        : 'الخادم متصل، لكن إعدادات Google OAuth لم تُضف بعد؛ الحفظ محمي ولن يعمل قبل إكمالها.');
-  } catch (error) {
-    currentUser = null;
-    apiStatus.className = 'status error';
-    apiStatus.textContent = 'تعذر الاتصال بالخادم: ' + (error.message || 'تحقق من إعداد API.');
-    loginButton.disabled = true;
-    logoutButton.disabled = true;
-    userInfo.textContent = 'يجب ربط الواجهة بعنوان Backend صالح قبل تسجيل الدخول.';
-  }
-}
-loginButton.addEventListener('click', () => {
-  window.location.href = apiUrl('/auth/google/start');
-});
-logoutButton.addEventListener('click', async () => {
-  try {
-    await fetch(apiUrl('/auth/logout'), { method: 'POST', credentials: 'include' });
-  } finally {
-    currentUser = null;
-    await refreshAccount();
-  }
-});
-loadDraftButton.addEventListener('click', async () => {
-  const id = savedJobId.value.trim();
-  if (!id) { loadedDraft.textContent = 'أدخل رقم المسودة أولًا.'; return; }
-  if (!currentUser) { loadedDraft.textContent = 'سجّل الدخول أولًا لاسترجاع مسودات حسابك.'; return; }
-  loadDraftButton.disabled = true;
-  try {
-    const response = await fetch(apiUrl('/api/jobs/' + encodeURIComponent(id)), { credentials: 'include', cache: 'no-store' });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data?.error?.code || 'تعذر استرجاع المسودة.');
-    const job = data.job;
-    promptBox.value = job.input.prompt || '';
+    const raw = localStorage.getItem("capital-ai-studio-draft");
+    if (!raw) {
+      loadedDraft.textContent = "لا توجد مسودة محفوظة على هذا الجهاز.";
+      return;
+    }
+    const draft = JSON.parse(raw);
+    promptBox.value = draft.prompt || "";
     count.textContent = promptBox.value.length;
-    durationSelect.value = String(job.input.durationSeconds);
-    document.getElementById('ratio').value = job.input.aspectRatio;
-    document.getElementById('style').value = job.input.visualStyle;
-    qualitySelect.value = job.input.quality;
-    updateCost();
-    loadedDraft.textContent = 'تم استرجاع المسودة: ' + job.id + ' — الحالة: ' + job.status + ' — تاريخ الإنشاء: ' + job.createdAt;
-    showStatus('تم استرجاع بيانات المسودة. لا يوجد فيديو مولّد.', 'success');
-  } catch (error) {
-    loadedDraft.textContent = error.message || 'حدث خطأ أثناء الاسترجاع.';
-  } finally {
-    loadDraftButton.disabled = false;
+    durationSelect.value = String(draft.durationSeconds || 3);
+    document.getElementById("ratio").value = draft.aspectRatio || "16:9";
+    document.getElementById("style").value = draft.visualStyle || "cinematic";
+    qualitySelect.value = draft.quality || "low";
+    loadedDraft.textContent = "تم استرجاع آخر مسودة. أعد اختيار الصورة المرجعية إذا كنت تريد استخدامها.";
+    showStatus("تم استرجاع المسودة المحلية.", "success");
+  } catch (_) {
+    loadedDraft.textContent = "تعذر قراءة المسودة المحفوظة.";
   }
 });
-refreshAccount();
 
-let previewUrl = null;
-imageInput.addEventListener('change', () => {
-  const file = imageInput.files[0];
-  if (previewUrl) {
-    URL.revokeObjectURL(previewUrl);
-    previewUrl = null;
+let imagePreviewUrl = null;
+imageInput.addEventListener("change", function () {
+  const file = imageInput.files && imageInput.files[0];
+  if (imagePreviewUrl) {
+    URL.revokeObjectURL(imagePreviewUrl);
+    imagePreviewUrl = null;
   }
-  preview.removeAttribute('src');
-  preview.style.display = 'none';
-  imageName.textContent = '';
+  preview.removeAttribute("src");
+  preview.style.display = "none";
+  imageName.textContent = "";
   if (!file) return;
 
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-  if (!allowedTypes.includes(file.type)) {
-    imageInput.value = '';
-    showStatus('نوع الصورة غير مدعوم. اختر JPG أو PNG أو WebP.', 'error');
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    imageInput.value = "";
+    showStatus("نوع الصورة غير مدعوم. اختر JPG أو PNG أو WebP.", "error");
     return;
   }
   if (file.size > 10 * 1024 * 1024) {
-    imageInput.value = '';
-    showStatus('حجم الصورة أكبر من 10 ميجابايت. اختر صورة أصغر.', 'error');
+    imageInput.value = "";
+    showStatus("حجم الصورة أكبر من 10 ميجابايت. اختر صورة أصغر.", "error");
     return;
   }
-  previewUrl = URL.createObjectURL(file);
-  preview.src = previewUrl;
-  preview.style.display = 'block';
-  imageName.textContent = 'الصورة المختارة: ' + file.name;
-  showStatus('تم اختيار الصورة وعرضها محليًا داخل الصفحة. لم يتم رفعها إلى أي خادم.', 'success');
+  imagePreviewUrl = URL.createObjectURL(file);
+  preview.src = imagePreviewUrl;
+  preview.style.display = "block";
+  imageName.textContent = "الصورة المختارة: " + file.name;
+  showStatus("تم اختيار الصورة. لن تُرفع إلا بعد موافقتك على التوليد.", "success");
 });
-window.addEventListener('beforeunload', () => {
-  if (previewUrl) URL.revokeObjectURL(previewUrl);
+
+window.addEventListener("beforeunload", function () {
+  if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+});
+
+connectLtx().catch(function () {
+  // The official Space may be sleeping; the next Generate click retries the connection.
 });
 </script>
 </body>
