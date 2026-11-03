@@ -287,6 +287,27 @@ function updateCost() {
   document.getElementById('costTotal').textContent = money(total);
   return {seconds, quality, total};
 }
+
+function buildLocalRequest() {
+  const quote = updateCost();
+  const selectedImage = imageInput.files && imageInput.files[0];
+  return {
+    prompt: promptBox.value.trim(),
+    durationSeconds: quote.seconds,
+    aspectRatio: document.getElementById('ratio').value,
+    visualStyle: document.getElementById('style').value,
+    quality: quote.quality,
+    estimatedCostUsd: Number(quote.total.toFixed(3)),
+    referenceImage: selectedImage ? {
+      selected: true,
+      fileName: selectedImage.name,
+      mimeType: selectedImage.type,
+      sizeBytes: selectedImage.size
+    } : {selected: false},
+    reviewOnly: true,
+    generationEnabled: false
+  };
+}
 function showStatus(message, type) {
   statusBox.className = 'status ' + type;
   statusBox.textContent = message;
@@ -356,11 +377,13 @@ document.getElementById('generate').addEventListener('click', () => {
     promptBox.focus();
     return;
   }
-  const quote = updateCost();
+  const requestDraft = buildLocalRequest();
   document.getElementById('confirmSummary').textContent =
-    'المدة: ' + quote.seconds + ' ثانية — الجودة: ' + quote.quality +
-    ' — التكلفة التقديرية: ' + money(quote.total) +
-    '. هذه موافقة تجريبية فقط؛ لن يتم إرسال طلب أو رفع صورة أو إنشاء فيديو أو خصم رصيد.';
+    'المدة: ' + requestDraft.durationSeconds + ' ثانية — الأبعاد: ' + requestDraft.aspectRatio +
+    ' — الأسلوب: ' + requestDraft.visualStyle + ' — الجودة: ' + requestDraft.quality +
+    ' — الصورة المرجعية: ' + (requestDraft.referenceImage.selected ? 'مختارة محليًا' : 'غير مختارة') +
+    ' — التكلفة التقديرية: ' + money(requestDraft.estimatedCostUsd) +
+    '. هذه معاينة بيانات محلية فقط؛ لن يتم إرسال طلب أو رفع صورة أو إنشاء فيديو أو خصم رصيد.';
   confirmCheck.checked = false;
   approveConfirm.disabled = true;
   openConfirmModal();
