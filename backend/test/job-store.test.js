@@ -52,9 +52,10 @@ describe("JobStore Durable Object", () => {
     await store.createJob(draft("job-transition-1"));
 
     const queued = await store.transitionJob("job-transition-1", "queued", { source: "test" });
-    expect(queued.status).toBe("queued");
-    expect(queued.events).toHaveLength(2);
-    expect(queued.events[1]).toMatchObject({ from: "draft", to: "queued", detail: { source: "test" } });
+    expect(queued.ok).toBe(true);
+    expect(queued.job.status).toBe("queued");
+    expect(queued.job.events).toHaveLength(2);
+    expect(queued.job.events[1]).toMatchObject({ from: "draft", to: "queued", detail: { source: "test" } });
   });
 
   it("rolls back a status update if event serialization fails", async () => {
@@ -63,7 +64,8 @@ describe("JobStore Durable Object", () => {
     const circular = {};
     circular.self = circular;
 
-    await expect(store.transitionJob("job-rollback-1", "queued", circular)).rejects.toThrow();
+    const result = await store.transitionJob("job-rollback-1", "queued", circular);
+    expect(result).toEqual({ ok: false, error: expect.any(String) });
     const unchanged = await store.getJob("job-rollback-1");
     expect(unchanged.status).toBe("draft");
     expect(unchanged.events).toHaveLength(1);
@@ -73,7 +75,8 @@ describe("JobStore Durable Object", () => {
     const store = uniqueStore();
     await store.createJob(draft("job-invalid-1"));
 
-    await expect(store.transitionJob("job-invalid-1", "completed")).rejects.toThrow("INVALID_STATUS_TRANSITION");
+    const result = await store.transitionJob("job-invalid-1", "completed");
+    expect(result).toEqual({ ok: false, error: "INVALID_STATUS_TRANSITION" });
     const unchanged = await store.getJob("job-invalid-1");
     expect(unchanged.status).toBe("draft");
     expect(unchanged.events).toHaveLength(1);
