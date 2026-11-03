@@ -1,0 +1,9 @@
+{
+  "$schema": "https://developers.cloudflare.com/workers/wrangler/config-schema.json",
+  "name": "capital-ai-studio-api",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-03",
+  "observability": {
+    "enabled": true
+  }
+}
