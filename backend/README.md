@@ -45,3 +45,28 @@ The Durable Object stores the immutable Google subject in `owner_id`; an additiv
 - Before production, add rate limiting, session revocation strategy, CSRF protections for state-changing routes, monitoring, and retention policy; test OAuth against the final HTTPS origin.
 
 This branch is an implementation draft and has not been runtime-tested or deployed. Do not deploy until the OAuth configuration and security review are complete.
+
+
+## Local automated tests
+
+The backend test harness uses Vitest with Cloudflare's Workers pool so tests execute in the Workers runtime with a local Miniflare-backed Durable Object binding.
+
+From the `backend/` directory:
+
+```sh
+npm install
+npm test
+```
+
+Test coverage currently includes:
+- Draft creation and initial event history.
+- Durable Object persistence across calls.
+- Valid lifecycle transition and event recording.
+- Transaction rollback when event serialization fails after the row update.
+- Rejection of invalid lifecycle transitions without history changes.
+- Isolation between distinct Durable Object identities.
+- Missing-job lookup.
+
+The rollback test intentionally causes JSON serialization to throw after the SQL update has run inside `transactionSync`; the expected result is that the transaction restores the prior status and event count.
+
+**Execution status:** the test files and configuration are committed, but the suite has not yet been executed in this environment. A successful GitHub file write is not evidence that dependencies install or tests pass. Do not merge until `npm install` and `npm test` complete successfully in the backend directory and their output is reviewed.
