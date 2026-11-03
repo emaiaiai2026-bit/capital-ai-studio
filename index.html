@@ -323,35 +323,64 @@ function dimensionsFor(ratio, quality) {
   return sizes[ratio] || sizes["16:9"];
 }
 
+function waitMs(ms) {
+  return new Promise(function (resolve) { setTimeout(resolve, ms); });
+}
+
 async function connectLtx() {
   if (!clientPromise) {
-    clientPromise = Client.connect(SPACE_ID, {
-      events: ["status", "data"],
-      space_status: function (state) {
-        if (state && state.message) {
-          engineStatus.className = "status info";
-          engineStatus.textContent = "حالة محرك LTX-2.5: " + state.message;
+    clientPromise = (async function () {
+      let lastError = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          const client = await Client.connect(SPACE_ID, {
+            events: ["status", "data"],
+            space_status: function (state) {
+              if (state && state.message) {
+                engineStatus.className = state.status === "error" || state.status === "space_error" ? "status error" : "status info";
+                engineStatus.textContent = "حالة مساحة LTX-2.5: " + state.message;
+              }
+            }
+          });
+
+          // API introspection is useful, but a temporary metadata endpoint failure
+          // must not discard an otherwise established Gradio connection.
+          try {
+            const api = await client.view_api();
+            const names = Object.keys((api && api.named_endpoints) || {});
+            const discovered = names.find(function (name) {
+              return name.toLowerCase().includes("run");
+            }) || names[0];
+            if (discovered) apiEndpoint = discovered.charAt(0) === "/" ? discovered : "/" + discovered;
+            else apiEndpoint = "/run";
+            engineStatus.className = "status success";
+            engineStatus.textContent = "محرك LTX-2.5 متصل — تم تجهيز واجهة التوليد عبر ZeroGPU المشترك.";
+          } catch (metadataError) {
+            apiEndpoint = "/run";
+            engineStatus.className = "status info";
+            engineStatus.textContent = "تم الاتصال بمساحة LTX-2.5؛ تعذر تحميل وصف API مؤقتًا، وسيُستخدم مسار التشغيل الافتراضي.";
+          }
+          return client;
+        } catch (error) {
+          lastError = error;
+          if (attempt < 2) {
+            const wait = 1200 * Math.pow(2, attempt);
+            engineStatus.className = "status info";
+            engineStatus.textContent = "مساحة LTX-2.5 لا تستجيب حاليًا. إعادة محاولة الاتصال " + (attempt + 1) + " من 2...";
+            await waitMs(wait);
+          }
         }
       }
-    }).then(async function (client) {
-      const api = await client.view_api();
-      const names = Object.keys(api.named_endpoints || {});
-      apiEndpoint = names.find(function (name) {
-        return name.toLowerCase().includes("run");
-      }) || names[0] || "/run";
-      engineStatus.className = "status success";
-      engineStatus.textContent = "محرك LTX-2.5 متصل — توليد من النص والصورة متاح عبر ZeroGPU المشترك.";
-      return client;
-    }).catch(function (error) {
+      throw lastError || new Error("تعذر الاتصال بمساحة LTX-2.5.");
+    })().catch(function (error) {
       clientPromise = null;
       engineStatus.className = "status error";
-      engineStatus.textContent = "تعذر الاتصال بمحرك LTX-2.5: " + (error.message || "حاول مرة أخرى.");
+      engineStatus.textContent = "تعذر الاتصال بمحرك LTX-2.5: " + (error.message || "حاول مرة أخرى بعد قليل.");
       throw error;
     });
   }
   return clientPromise;
 }
-
 function closeConfirmModal() {
   if (!confirmModal.classList.contains("open")) return;
   confirmModal.classList.remove("open");
@@ -369,47 +398,120 @@ function openConfirmModal() {
   document.getElementById("cancelConfirm").focus();
 }
 
-function videoUrlFrom(value) {
+function collectVideoUrls(value, urls, seen) {
+  if (value === null || value === undefined) return;
   if (typeof value === "string") {
-    if (/^https?:\/\//i.test(value)) return value;
-    return SPACE_URL + "/file=" + value.replace(/^\/+/, "");
-  }
-  if (value && typeof value === "object") {
-    if (value.url) return value.url;
-    if (value.path) {
-      if (/^https?:\/\//i.test(value.path)) return value.path;
-      return SPACE_URL + "/file=" + value.path.replace(/^\/+/, "");
+    const raw = value.trim();
+    if (!raw) return;
+    if (/^https?:\/\//i.test(raw)) {
+      if (!urls.includes(raw)) urls.push(raw);
+      return;
     }
+    if (/\.mp4(?:[?#]|$)|\.webm(?:[?#]|$)|\.mov(?:[?#]|$)|\/file=/i.test(raw)) {
+      const path = raw.replace(/^\/+/, "");
+      const modern = SPACE_URL + "/gradio_api/file=" + path;
+      const legacy = SPACE_URL + "/file=" + path;
+      if (!urls.includes(modern)) urls.push(modern);
+      if (!urls.includes(legacy)) urls.push(legacy);
+    }
+    return;
   }
-  return null;
+  if (typeof value !== "object" || seen.has(value)) return;
+  seen.add(value);
+  if (Array.isArray(value)) {
+    value.forEach(function (item) { collectVideoUrls(item, urls, seen); });
+    return;
+  }
+  // Prefer Gradio's public URL. Some components return nested FileData objects.
+  if (typeof value.url === "string" && value.url) {
+    collectVideoUrls(value.url, urls, seen);
+  }
+  if (typeof value.path === "string" && value.path) {
+    collectVideoUrls(value.path, urls, seen);
+  }
+  ["video", "file", "output", "data", "value"].forEach(function (key) {
+    if (value[key] !== undefined) collectVideoUrls(value[key], urls, seen);
+  });
 }
 
-function showVideo(data, requestDraft) {
-  const output = Array.isArray(data) ? data[0] : null;
-  const url = videoUrlFrom(output);
-  if (!url) throw new Error("اكتمل رد المحرك لكن رابط الفيديو غير موجود في النتيجة.");
+function videoUrlsFrom(data) {
+  const urls = [];
+  collectVideoUrls(data, urls, new Set());
+  return urls;
+}
+
+async function showVideo(data, requestDraft) {
+  const urls = videoUrlsFrom(data);
+  if (!urls.length) {
+    throw new Error("اكتمل رد المحرك لكن لم نعثر على رابط ملف فيديو في بيانات النتيجة.");
+  }
+
+  let video = null;
+  let selectedUrl = null;
+  let lastLoadError = null;
+
+  for (const candidate of urls) {
+    const testVideo = document.createElement("video");
+    testVideo.controls = true;
+    testVideo.playsInline = true;
+    testVideo.preload = "metadata";
+    testVideo.style.width = "100%";
+    testVideo.style.maxHeight = "480px";
+    testVideo.style.borderRadius = "12px";
+
+    try {
+      await new Promise(function (resolve, reject) {
+        let settled = false;
+        const timer = setTimeout(function () {
+          if (!settled) {
+            settled = true;
+            reject(new Error("انتهت مهلة التحقق من ملف الفيديو."));
+          }
+        }, 25000);
+        testVideo.onloadedmetadata = function () {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          if (Number.isFinite(testVideo.duration) && testVideo.duration > 0) resolve();
+          else reject(new Error("ملف الفيديو لا يحتوي على مدة صالحة."));
+        };
+        testVideo.onerror = function () {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          reject(new Error("تعذر فتح ملف الفيديو من مساحة Hugging Face."));
+        };
+        testVideo.src = candidate;
+        testVideo.load();
+      });
+      video = testVideo;
+      selectedUrl = candidate;
+      break;
+    } catch (error) {
+      lastLoadError = error;
+      testVideo.removeAttribute("src");
+      testVideo.load();
+    }
+  }
+
+  if (!video || !selectedUrl) {
+    throw new Error((lastLoadError && lastLoadError.message) || "تم استلام بيانات النتيجة لكن تعذر تحميل ملف الفيديو.");
+  }
+
   videoResult.style.display = "block";
   videoResult.className = "status success";
   videoResult.replaceChildren();
 
   const title = document.createElement("p");
-  title.textContent = "الفيديو جاهز — " + (Array.isArray(data) && data[3] ? data[3] : "LTX-2.5");
+  title.textContent = "تم استلام ملف فيديو صالح — " + (video.duration.toFixed(1)) + " ثانية";
   videoResult.appendChild(title);
-
-  const video = document.createElement("video");
-  video.controls = true;
-  video.playsInline = true;
-  video.preload = "metadata";
-  video.src = url;
-  video.style.width = "100%";
-  video.style.maxHeight = "480px";
-  video.style.borderRadius = "12px";
   videoResult.appendChild(video);
 
   const link = document.createElement("a");
-  link.href = url;
+  link.href = selectedUrl;
   link.target = "_blank";
   link.rel = "noopener noreferrer";
+  link.download = "capital-ai-studio-video.mp4";
   link.textContent = "فتح الفيديو أو تنزيله";
   link.style.display = "inline-block";
   link.style.marginTop = "12px";
@@ -419,11 +521,10 @@ function showVideo(data, requestDraft) {
 
   try {
     const history = JSON.parse(localStorage.getItem("capital-ai-studio-history") || "[]");
-    history.unshift({ url: url, prompt: requestDraft.prompt, createdAt: new Date().toISOString() });
+    history.unshift({ url: selectedUrl, prompt: requestDraft.prompt, createdAt: new Date().toISOString() });
     localStorage.setItem("capital-ai-studio-history", JSON.stringify(history.slice(0, 8)));
   } catch (_) {}
 }
-
 async function generateVideo() {
   const requestDraft = buildLocalRequest();
   const image = imageInput.files && imageInput.files[0];
@@ -463,30 +564,73 @@ async function generateVideo() {
       false
     ];
 
-    showStatus("تم إرسال الطلب إلى طابور Hugging Face ZeroGPU. انتظر حتى يبدأ التنفيذ...", "info");
+    showStatus("تم إرسال الطلب إلى طابور Hugging Face ZeroGPU. سنعرض تحديثات الانتظار والتنفيذ حتى استلام النتيجة...", "info");
     const submission = client.submit(apiEndpoint, payload);
     let resultData = null;
+    let lastQueueStatus = null;
+    const MAX_QUEUE_WAIT_MS = 12 * 60 * 1000;
 
-    for await (const message of submission) {
-      if (message.type === "status") {
-        const state = message.status || {};
-        if (state.stage === "pending") {
-          const position = state.position !== undefined && state.position !== null
-            ? " — ترتيبك في الطابور: " + (Number(state.position) + 1)
-            : "";
-          showStatus("طلبك في انتظار دور GPU" + position + (state.eta ? " — الوقت المتوقع " + Math.ceil(state.eta) + " ثانية" : ""), "info");
-        } else if (state.stage === "generating") {
-          showStatus("بدأ توليد الفيديو الآن. قد يستغرق عدة دقائق حسب الضغط والدقة.", "info");
-        } else if (state.stage === "error") {
-          throw new Error(state.message || "تعذر تنفيذ الطلب على مساحة التوليد.");
+    const consumeSubmission = async function () {
+      for await (const message of submission) {
+        if (!message || typeof message !== "object") continue;
+
+        if (message.type === "data") {
+          if (message.data !== undefined && message.data !== null) resultData = message.data;
+          continue;
         }
-      } else if (message.type === "data") {
-        resultData = message.data;
+
+        if (message.type === "status") {
+          // In @gradio/client, stage/success/message are top-level status fields,
+          // not nested under message.status.
+          const nested = message.status && typeof message.status === "object" ? message.status : {};
+          const state = Object.assign({}, nested, message);
+          const stage = state.stage || (typeof state.status === "string" ? state.status : "");
+          lastQueueStatus = state;
+
+          if (stage === "pending") {
+            const position = state.position !== undefined && state.position !== null
+              ? " — ترتيبك في الطابور: " + (Number(state.position) + 1)
+              : "";
+            const eta = state.eta ? " — الوقت المتوقع " + Math.ceil(state.eta) + " ثانية" : "";
+            showStatus("طلبك في انتظار دور GPU" + position + eta, "info");
+          } else if (stage === "generating") {
+            showStatus("بدأ توليد الفيديو الآن. لا تغلق الصفحة حتى استلام الملف.", "info");
+          } else if (stage === "error") {
+            throw new Error(state.message || state.code || "رفض محرك LTX-2.5 تنفيذ الطلب.");
+          } else if (stage === "complete") {
+            if (state.success === false) {
+              throw new Error(state.message || state.code || "انتهى تنفيذ الطلب دون نجاح من محرك LTX-2.5.");
+            }
+            // Stop on the terminal event. This also avoids waiting forever on
+            // affected Gradio JS-client async iterators after process_completed.
+            break;
+          }
+        }
       }
+    };
+
+    let timeoutId = null;
+    try {
+      await Promise.race([
+        consumeSubmission(),
+        new Promise(function (_, reject) {
+          timeoutId = setTimeout(function () {
+            if (submission && typeof submission.cancel === "function") submission.cancel();
+            reject(new Error("تجاوز الطلب 12 دقيقة دون اكتمال. قد يكون الطابور مزدحمًا أو مساحة التوليد غير مستقرة؛ أعد المحاولة لاحقًا."));
+          }, MAX_QUEUE_WAIT_MS);
+        })
+      ]);
+    } finally {
+      if (timeoutId !== null) clearTimeout(timeoutId);
     }
 
-    if (!resultData) throw new Error("انتهى اتصال الطابور دون إرجاع ملف فيديو. جرّب مرة أخرى بعد قليل.");
-    showVideo(resultData, requestDraft);
+    if (!resultData) {
+      const detail = lastQueueStatus && (lastQueueStatus.message || lastQueueStatus.code);
+      throw new Error(detail
+        ? "انتهى طلب التوليد دون ملف فيديو: " + detail
+        : "انتهى اتصال الطابور دون إرجاع ملف فيديو. لم نعتبر الطلب ناجحًا؛ انتظر قليلًا ثم أعد المحاولة.");
+    }
+    await showVideo(resultData, requestDraft);
     showStatus("اكتمل توليد الفيديو بنجاح. حمّل النتيجة الآن للاحتفاظ بها.", "success");
   } catch (error) {
     showStatus(error.message || "تعذر توليد الفيديو. افتح مساحة LTX الرسمية أو أعد المحاولة لاحقًا.", "error");
