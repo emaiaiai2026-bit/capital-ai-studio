@@ -139,8 +139,8 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
 
 <main>
   <section class="hero">
-    <h2>اختبر تجهيز طلبك دون إنشاء فيديو</h2>
-    <p>اكتب وصفك وحدد الإعدادات لاختبار الطلب فقط. هذا الوضع لا يُنشئ فيديو ولا يخصم رصيدًا.</p>
+    <h2>أنشئ فيديو من النص أو حرّك صورة باستخدام LTX-2.5</h2>
+    <p>توليد فعلي عبر مساحة Lightricks الرسمية على Hugging Face باستخدام طابور ZeroGPU المجاني المشترك. قد يتغير وقت الانتظار حسب الضغط والحصة المتاحة.</p>
   </section>
 
   <section class="card">
@@ -156,7 +156,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
       <label class="drop" for="image">
         <div style="font-size:28px">📁</div>
         <strong>اضغط لاختيار صورة من هاتفك</strong>
-        <small>اختيار الصورة لا يعني توليد فيديو منها حتى نربط محرك التوليد.</small>
+        <small>الصورة اختيارية وتُرسل إلى مساحة التوليد عند بدء الطلب.</small>
         <input id="image" type="file" accept="image/png,image/jpeg,image/webp">
         <img id="preview" alt="معاينة الصورة المختارة">
       </label>
@@ -165,9 +165,9 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
   </section>
 
   <section class="card" aria-live="polite">
-    <div class="card-title">🔌 حالة وضع المراجعة</div>
-    <div id="engineStatus" class="status info" style="display:block">وضع المراجعة فقط — التوليد غير مفعّل</div>
-    <p class="hint">لا يوجد اتصال بمحرك توليد أو قراءة رصيد. هذا الاختبار لا ينشئ فيديو ولا يخصم Credits.</p>
+    <div class="card-title">🔌 محرك توليد الفيديو</div>
+    <div id="engineStatus" class="status info" style="display:block">جارٍ تجهيز الاتصال بمحرّك LTX-2.5...</div>
+    <p class="hint">المحرك يعمل على Hugging Face ZeroGPU. الطابور والحصة مشتركان وقد يتطلب الأمر الانتظار أو إعادة المحاولة.</p>
   </section>
 
   <section class="card">
@@ -176,12 +176,11 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
       <div class="field">
         <label for="duration">مدة الفيديو</label>
         <select id="duration">
+          <option value="2">2 ثانية</option>
+          <option value="3" selected>3 ثوانٍ</option>
+          <option value="4">4 ثوانٍ</option>
           <option value="5">5 ثوانٍ</option>
-          <option value="10">10 ثوانٍ</option>
-          <option value="15">15 ثانية</option>
-          
-        </select>
-      </div>
+        </select>      </div>
       <div class="field">
         <label for="ratio">أبعاد الفيديو</label>
         <select id="ratio">
@@ -201,24 +200,22 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
         </select>
       </div>
       <div class="field">
-        <label for="quality">الجودة المطلوبة</label>
+        <label for="quality">الدقة</label>
         <select id="quality">
-          <option value="480p">اقتصادي — 480p</option>
-          <option value="768p" selected>متوازن — 768p</option>
-          <option value="1080p">عالي — 1080p</option>
+          <option value="low" selected>اقتصادي — أسرع في الطابور</option>
+          <option value="high">تفاصيل أعلى — يحتاج وقتًا أطول</option>
         </select>
-      </div>
-    </div>
+      </div>    </div>
     <div class="cost-box" aria-live="polite">
-      <div class="card-title">💰 التكلفة التقديرية</div>
-      <div class="cost-line"><span>المدة</span><strong id="costDuration">5 ثوانٍ</strong></div>
-      <div class="cost-line"><span>الجودة</span><strong id="costQuality">768p — متوازن</strong></div>
-      <div class="cost-line"><span>سعر الثانية</span><strong id="costRate">$0.04</strong></div>
-      <div class="cost-line cost-total"><span>التكلفة التقديرية</span><strong id="costTotal">$0.20</strong></div>
-      <p class="hint">الأسعار العادية المنشورة لـ Pika H3 Flex بالدولار، وقد تتغير حسب المزود. لا يوجد خصم أو طلب فعلي في وضع المراجعة.</p>
-      <p class="hint">العرض المؤقت حتى 5 نوفمبر 2026 غير محسوب كسعر دائم.</p>
+      <div class="card-title">🆓 طريقة التشغيل</div>
+      <p class="hint">يستخدم المشروع مساحة Lightricks الرسمية LTX-2.5 على Hugging Face ZeroGPU. لا نستخدم مفتاح API مدفوعًا داخل مشروعنا. الخدمة العامة لها طابور وحصة استخدام مشتركة، لذلك لا يوجد ضمان لوقت فوري أو استخدام غير محدود.</p>
+      <p class="hint">النص والصورة المختارة سيتم إرسالهما إلى مساحة Hugging Face لتوليد الفيديو. لا ترفع صورًا خاصة أو لا تملك حق استخدامها.</p>
+      <a href="https://huggingface.co/spaces/Lightricks/LTX-2.5" target="_blank" rel="noopener noreferrer" style="color:#c9b7ff;font-size:12px">فتح مساحة LTX-2.5 الرسمية</a>
     </div>
-    <button class="primary" id="generate">مراجعة التكلفة وحفظ المسودة</button>
+    <button class="primary" id="generate">ابدأ توليد الفيديو</button>
+    <button class="secondary" id="saveDraftButton" type="button" style="width:100%;margin-top:10px">حفظ الوصف كمسودة على هذا الجهاز</button>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+    <div id="videoResult" class="status info" role="status" aria-live="polite" style="display:none"></div>
     <div id="status" class="status" role="status" aria-live="polite"></div>
   </section>
 
@@ -239,31 +236,22 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
       </div>
     </div>
   </section>
-  <section class="card" id="accountPanel">
-    <div class="card-title">🔐 الاتصال والحساب وحفظ المسودات</div>
-    <div id="apiStatus" class="status info" style="display:block">جارٍ فحص اتصال الخادم...</div>
-    <div class="grid">
-      <button class="secondary" type="button" id="loginButton">تسجيل الدخول بحساب Google</button>
-      <button class="secondary" type="button" id="logoutButton" disabled>تسجيل الخروج</button>
-    </div>
-    <p id="userInfo" class="hint">لن يتم حفظ الطلبات إلا بعد تسجيل الدخول.</p>
-    <div class="field">
-      <label for="savedJobId">رقم المسودة لاسترجاعها</label>
-      <input id="savedJobId" type="text" placeholder="سيظهر رقم المسودة بعد الحفظ">
-    </div>
-    <button class="secondary" type="button" id="loadDraftButton">استرجاع المسودة</button>
+  <section class="card">
+    <div class="card-title">🗂️ المسودات المحلية</div>
+    <p class="hint">المسودات تُحفظ في متصفح هذا الجهاز فقط، ولا تحتاج إلى تسجيل دخول.</p>
+    <button class="secondary" type="button" id="loadDraftButton">استرجاع آخر مسودة</button>
     <div id="loadedDraft" class="hint" aria-live="polite"></div>
-    <p class="hint">الحفظ ينشئ مسودة فقط. لا يتم إرسالها لمحرك توليد أو إنشاء فيديو أو خصم رصيد.</p>
   </section>
+
 </main>
 <div class="modal-backdrop" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmSummary">
   <div class="modal">
     <h3 id="confirmTitle">مراجعة الطلب قبل الموافقة</h3>
     <p id="confirmSummary">مراجعة محلية فقط.</p>
-    <label class="check-row"><input type="checkbox" id="confirmCheck"><span>أوافق على التكلفة التقديرية، وأفهم أن الموافقة تجريبية ولا ترسل طلب توليد.</span></label>
+    <label class="check-row"><input type="checkbox" id="confirmCheck"><span>أوافق على إرسال الوصف والصورة المختارة إلى مساحة Lightricks LTX-2.5 العامة على Hugging Face لتوليد الفيديو، وأفهم أن الطابور والحصة مشتركان.</span></label>
     <div class="modal-actions">
       <button class="secondary" type="button" id="cancelConfirm">رجوع وتعديل</button>
-      <button class="primary" type="button" id="approveConfirm" disabled>تأكيد تجريبي</button>
+      <button class="primary" type="button" id="approveConfirm" disabled>أوافق وابدأ التوليد</button>
     </div>
   </div>
 </div>
