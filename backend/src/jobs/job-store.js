@@ -15,6 +15,7 @@ export class JobStore extends DurableObject {
     this.ctx.storage.sql.exec(`
       CREATE TABLE IF NOT EXISTS jobs (
         id TEXT PRIMARY KEY,
+        owner_id TEXT,
         status TEXT NOT NULL,
         provider_id TEXT,
         provider_job_id TEXT,
@@ -25,6 +26,10 @@ export class JobStore extends DurableObject {
         updated_at TEXT NOT NULL
       )
     `);
+    const columns = this.ctx.storage.sql.exec("PRAGMA table_info(jobs)").toArray();
+    if (!columns.some((column) => column.name === "owner_id")) {
+      this.ctx.storage.sql.exec("ALTER TABLE jobs ADD COLUMN owner_id TEXT");
+    }
     this.ctx.storage.sql.exec(`
       CREATE TABLE IF NOT EXISTS job_events (
         event_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,9 +46,9 @@ export class JobStore extends DurableObject {
     const now = new Date().toISOString();
     this.ctx.storage.sql.exec(
       `INSERT INTO jobs
-       (id, status, provider_id, provider_job_id, input_json, output_json, error_json, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      record.id, record.status, record.providerId, record.providerJobId,
+       (id, owner_id, status, provider_id, provider_job_id, input_json, output_json, error_json, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      record.id, record.ownerId || null, record.status, record.providerId, record.providerJobId,
       JSON.stringify(record.input), null, null, now, now
     );
     this.ctx.storage.sql.exec(
@@ -66,6 +71,7 @@ export class JobStore extends DurableObject {
 
     return {
       id: row.id,
+      ownerId: row.owner_id,
       status: row.status,
       providerId: row.provider_id,
       providerJobId: row.provider_job_id,
