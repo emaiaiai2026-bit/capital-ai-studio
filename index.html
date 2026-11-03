@@ -293,22 +293,10 @@ const modalPanel = confirmModal.querySelector('.modal');
 let modalReturnFocus = null;
 const confirmCheck = document.getElementById('confirmCheck');
 const approveConfirm = document.getElementById('approveConfirm');
-const rates = {'480p':0.02,'768p':0.04,'1080p':0.07};
-const qualityNames = {'480p':'اقتصادي','768p':'متوازن','1080p':'عالي'};
+const qualityNames = {'480p':'اقتصادي'};
 
-function money(n) {
-  return '$' + n.toFixed(3).replace(/0+$/,'').replace(/\.$/,'');
-}
 function updateCost() {
-  const seconds = Number(durationSelect.value);
-  const quality = qualitySelect.value;
-  const rate = rates[quality];
-  const total = seconds * rate;
-  document.getElementById('costDuration').textContent = seconds + ' ثانية';
-  document.getElementById('costQuality').textContent = quality + ' — ' + qualityNames[quality];
-  document.getElementById('costRate').textContent = money(rate);
-  document.getElementById('costTotal').textContent = money(total);
-  return {seconds, quality, total};
+  return { seconds: Number(durationSelect.value), quality: qualitySelect.value };
 }
 
 function buildLocalRequest() {
@@ -320,15 +308,12 @@ function buildLocalRequest() {
     aspectRatio: document.getElementById('ratio').value,
     visualStyle: document.getElementById('style').value,
     quality: quote.quality,
-    estimatedCostUsd: Number(quote.total.toFixed(3)),
     referenceImage: selectedImage ? {
       selected: true,
       fileName: selectedImage.name,
       mimeType: selectedImage.type,
       sizeBytes: selectedImage.size
-    } : {selected: false},
-    reviewOnly: true,
-    generationEnabled: false
+    } : {selected: false}
   };
 }
 function showStatus(message, type) {
@@ -337,7 +322,7 @@ function showStatus(message, type) {
 }
 function loadEngineBalance() {
   engineStatus.className = 'status info';
-  engineStatus.textContent = 'فحص الرصيد متوقف مؤقتًا في وضع المراجعة. لم يتم إرسال أي طلب إلى محرك التوليد.';
+  engineStatus.textContent = 'جارٍ فحص اتصال محرك التوليد...';
 }
 
 promptBox.addEventListener('input', () => {
@@ -396,7 +381,7 @@ document.addEventListener('keydown', (event) => {
 });
 document.getElementById('generate').addEventListener('click', () => {
   if (!promptBox.value.trim()) {
-    showStatus('اكتب وصفًا أولًا، ثم راجع التكلفة.', 'error');
+    showStatus('اكتب وصف الفيديو أولًا.', 'error');
     promptBox.focus();
     return;
   }
@@ -404,9 +389,8 @@ document.getElementById('generate').addEventListener('click', () => {
   document.getElementById('confirmSummary').textContent =
     'المدة: ' + requestDraft.durationSeconds + ' ثانية — الأبعاد: ' + requestDraft.aspectRatio +
     ' — الأسلوب: ' + requestDraft.visualStyle + ' — الجودة: ' + requestDraft.quality +
-    ' — الصورة المرجعية: ' + (requestDraft.referenceImage.selected ? 'مختارة محليًا' : 'غير مختارة') +
-    ' — التكلفة التقديرية: ' + money(requestDraft.estimatedCostUsd) +
-    '. هذه معاينة بيانات محلية فقط؛ لن يتم إرسال طلب أو رفع صورة أو إنشاء فيديو أو خصم رصيد.';
+    ' — الصورة المرجعية: ' + (requestDraft.referenceImage.selected ? 'سيتم رفعها بعد التأكيد' : 'غير مختارة') +
+    ' — المحرك: Magic Hour / LTX-2.5 / 480p. قد يستهلك التوليد Credits من حساب المزود. لن يتم إرسال الطلب قبل موافقتك.';
   confirmCheck.checked = false;
   approveConfirm.disabled = true;
   openConfirmModal();
@@ -414,11 +398,42 @@ document.getElementById('generate').addEventListener('click', () => {
 approveConfirm.addEventListener('click', async () => {
   closeConfirmModal();
   const requestDraft = buildLocalRequest();
+  const selectedImage = imageInput.files && imageInput.files[0];
+  document.getElementById('generate').disabled = true;
   try {
-    if (!currentUser) throw new Error('سجّل الدخول أولًا حتى نستطيع حفظ المسودة بأمان.');
+    if (!currentUser) throw new Error('سجّل الدخول أولًا لبدء التوليد بأمان.');
+    const form = new FormData();
+    form.append('prompt', requestDraft.prompt);
+    form.append('durationSeconds', String(requestDraft.durationSeconds));
+    form.append('aspectRatio', requestDraft.aspectRatio);
+    form.append('visualStyle', requestDraft.visualStyle);
+    form.append('quality', requestDraft.quality);
+    if (selectedImage) form.append('image', selectedImage, selectedImage.name);
+    showStatus('جارٍ إرسال طلب التوليد إلى Magic Hour...', 'info');
+    const response = await fetch(apiUrl('/api/jobs/submit'), { method: 'POST', credentials: 'include', body: form });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data?.error?.message || data?.error?.code || 'تعذر بدء توليد الفيديو.');
+    savedJobId.value = data.job.id;
+    showStatus('تم إرسال طلب التوليد. رقم المهمة: ' + data.job.id +
+      (data.creditsCharged !== null && data.creditsCharged !== undefined ? ' — Credits: ' + data.creditsCharged : '') +
+      ' — الحالة: ' + data.job.status, 'success');
+    pollJob(data.job.id);
+  } catch (error) {
+    showStatus(error.message || 'حدث خطأ أثناء إرسال طلب التوليد.', 'error');
+  } finally {
+    document.getElementById('generate').disabled = false;
+  }
+});
+
+document.getElementById('saveDraftButton').addEventListener('click', async () => {
+  const requestDraft = buildLocalRequest();
+  if (!requestDraft.prompt) { showStatus('اكتب وصف الفيديو أولًا.', 'error'); promptBox.focus(); return; }
+  if (!currentUser) { showStatus('سجّل الدخول أولًا لحفظ المسودة.', 'error'); return; }
+  const button = document.getElementById('saveDraftButton');
+  button.disabled = true;
+  try {
     const response = await fetch(apiUrl('/api/jobs'), {
-      method: 'POST',
-      credentials: 'include',
+      method: 'POST', credentials: 'include',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         prompt: requestDraft.prompt,
@@ -431,12 +446,53 @@ approveConfirm.addEventListener('click', async () => {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data?.error?.message || data?.error?.code || 'تعذر حفظ المسودة.');
     savedJobId.value = data.job.id;
-    showStatus('تم حفظ المسودة بنجاح. رقمها: ' + data.job.id + ' — لم يبدأ التوليد ولم يُخصم أي رصيد.', 'success');
-    await refreshAccount();
+    showStatus('تم حفظ المسودة فقط. رقمها: ' + data.job.id + ' — لم يبدأ التوليد.', 'success');
   } catch (error) {
-    showStatus(error.message || 'حدث خطأ أثناء حفظ المسودة.', 'error');
+    showStatus(error.message || 'تعذر حفظ المسودة.', 'error');
+  } finally {
+    button.disabled = false;
   }
 });
+
+async function pollJob(id) {
+  const result = document.getElementById('videoResult');
+  result.style.display = 'block';
+  result.className = 'status info';
+  result.textContent = 'جارٍ متابعة حالة التوليد...';
+  for (let attempt = 0; attempt < 36; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, 8000));
+    try {
+      const response = await fetch(apiUrl('/api/jobs/' + encodeURIComponent(id)), { credentials: 'include', cache: 'no-store' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error?.code || 'تعذر قراءة حالة المهمة.');
+      const job = data.job;
+      if (job.status === 'completed' && job.output && job.output.videoUrl) {
+        result.className = 'status success';
+        result.textContent = 'الفيديو جاهز! ';
+        const link = document.createElement('a');
+        link.href = job.output.videoUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'افتح الفيديو أو نزّله';
+        link.style.color = '#fff';
+        link.style.textDecoration = 'underline';
+        result.appendChild(link);
+        return;
+      }
+      if (job.status === 'failed' || job.status === 'cancelled') {
+        result.className = 'status error';
+        result.textContent = 'لم يكتمل التوليد: ' + (job.error?.message || 'حدث خطأ لدى المزود.');
+        return;
+      }
+      result.textContent = 'حالة التوليد: ' + job.status + ' — جارٍ الانتظار...';
+    } catch (error) {
+      result.textContent = error.message || 'تعذر تحديث الحالة؛ يمكنك استرجاع المهمة لاحقًا.';
+      return;
+    }
+  }
+  result.textContent = 'ما زال الفيديو قيد المعالجة. احتفظ برقم المهمة لاسترجاع حالتها لاحقًا.';
+});
+
 
 async function refreshAccount() {
   try {
