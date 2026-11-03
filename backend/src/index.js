@@ -88,6 +88,16 @@ async function handleRequest(request, env) {
       return json({ providers, configured: providers.length > 0 });
     }
 
+    if (request.method === "GET" && url.pathname === "/api/provider/health") {
+      if (!env.MAGIC_HOUR_API_KEY) return json({ configured: false, connected: false });
+      try {
+        await getMagicHour(env).getAccount();
+        return json({ configured: true, connected: true });
+      } catch (error) {
+        return json({ configured: true, connected: false, errorCode: error?.code || "PROVIDER_UNAVAILABLE" }, 502);
+      }
+    }
+
     if (request.method === "GET" && url.pathname === "/api/provider/account") {
       const user = await getSession(request, env);
       if (!user) return json({ error: { code: "UNAUTHORIZED" } }, 401);
