@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - fix/jobstore-atomic-tests
+      - feature/magichour-video-generation
   pull_request:
     branches:
       - main
       - fix/jobstore-atomic-tests
+      - feature/magichour-video-generation
     paths:
       - "backend/**"
       - ".github/workflows/backend-tests.yml"
