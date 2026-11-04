@@ -56,10 +56,7 @@ export async function onRequestPost({ request, env }) {
               content: "Translate the user's Arabic text faithfully into clear English for a text-to-video model. Preserve all visual details, scene, actions, camera movement, style, and constraints. Do not add content, people, dialogue, narration, subtitles, or audio details. Do not answer the prompt. Return only the English translation."
             },
             { role: "user", content: sourceText }
-          ],
-          temperature: 0.1,
-          max_tokens: 700,
-          stream: false
+          ]
         }),
         signal: controller.signal
       });
@@ -82,8 +79,14 @@ export async function onRequestPost({ request, env }) {
         if (upstream.status === 429) {
           return json({ error: "وصلت خدمة الترجمة إلى حد الاستخدام أو لا يتوفر رصيد كافٍ. راجع حدود الاستخدام في Hugging Face." }, 503);
         }
-        if (upstream.status === 400 || upstream.status === 404 || upstream.status === 422) {
-          return json({ error: "نموذج الترجمة أو إعداد الطلب غير متاح حاليًا. جاري ضبط الاتصال." }, 502);
+        if (upstream.status === 400) {
+          return json({ error: "رفض مزود الترجمة صيغة الطلب (400). تم تسجيل التشخيص دون حفظ الوصف أو المفتاح." }, 502);
+        }
+        if (upstream.status === 404) {
+          return json({ error: "نموذج الترجمة غير متاح لدى مزود Hugging Face حاليًا (404)." }, 502);
+        }
+        if (upstream.status === 422) {
+          return json({ error: "مزود Hugging Face رفض إعدادات النموذج (422). تم تبسيط الطلب لتجنب المعاملات غير المدعومة." }, 502);
         }
         return json({ error: "خدمة Hugging Face لم تستجب بشكل سليم. حاول مرة أخرى بعد قليل." }, 502);
       }
