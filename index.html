@@ -366,6 +366,8 @@ async function runTranslationDiagnostic() {
       resultBox.textContent = "فشل اختبار الترجمة. HTTP الموقع: " + response.status +
         (data.diagnostic?.upstreamStatus ? " — رد Hugging Face: " + data.diagnostic.upstreamStatus : "") +
         (data.diagnostic?.stage ? " — المرحلة: " + data.diagnostic.stage : "") +
+        (data.diagnostic?.model ? " — النموذج: " + data.diagnostic.model : "") +
+        (data.diagnostic?.providerMessage ? " — رسالة المزود: " + data.diagnostic.providerMessage : "") +
         " — التفاصيل: " + (data.error || "لم يصل رد مفهوم");
     }
   } catch (error) {
