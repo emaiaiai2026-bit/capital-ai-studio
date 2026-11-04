@@ -66,16 +66,26 @@ export async function onRequestPost({ request, env }) {
       let data = {};
       try { data = raw ? JSON.parse(raw) : {}; } catch { /* invalid provider response */ }
 
+      // Provider error text is exposed only to the explicit diagnostic button.
+      // Remove the secret and test prompt before returning any provider message.
+      const providerErrorValue = data?.error ?? data?.message ?? data?.detail ?? "";
+      let safeProviderMessage = typeof providerErrorValue === "string"
+        ? providerErrorValue
+        : JSON.stringify(providerErrorValue);
+      safeProviderMessage = String(safeProviderMessage || "No provider error message returned")
+        .replaceAll(token, "[REDACTED_TOKEN]")
+        .replaceAll(sourceText, "[REDACTED_PROMPT]")
+        .replace(/[\\r\\n\\t]+/g, " ")
+        .slice(0, 350);
+
       if (!upstream.ok) {
-        // Detailed server-side diagnostic, with no token or prompt content.
         console.error("HF translation provider error", {
           status: upstream.status,
-          model: HF_MODEL,
-          providerMessage: typeof data?.error === "string" ? data.error.slice(0, 400) : "non-JSON response"
+          model: HF_MODEL
         });
 
         if (upstream.status === 401 || upstream.status === 403) {
-          return json({ error: "رفضت Hugging Face المفتاح أو صلاحياته. تأكد أن HF_TOKEN من نوع User Access Token وبصلاحية Inference Providers.", ...(diagnostic ? { diagnostic: { stage: "huggingface", upstreamStatus: upstream.status, model: HF_MODEL } } : {}) }, 502);
+          return json({ error: "رفضت Hugging Face المفتاح أو صلاحياته. تأكد أن HF_TOKEN من نوع User Access Token وبصلاحية Inference Providers.", ...(diagnostic ? { diagnostic: { stage: "huggingface", upstreamStatus: upstream.status, model: HF_MODEL, providerMessage: safeProviderMessage } } : {}) }, 502);
         }
         if (upstream.status === 429) {
           return json({ error: "وصلت خدمة الترجمة إلى حد الاستخدام أو لا يتوفر رصيد كافٍ. راجع حدود الاستخدام في Hugging Face.", ...(diagnostic ? { diagnostic: { stage: "huggingface", upstreamStatus: upstream.status, model: HF_MODEL } } : {}) }, 503);
