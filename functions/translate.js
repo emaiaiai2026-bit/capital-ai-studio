@@ -91,7 +91,7 @@ export async function onRequestPost({ request, env }) {
           return json({ error: "وصلت خدمة الترجمة إلى حد الاستخدام أو لا يتوفر رصيد كافٍ. راجع حدود الاستخدام في Hugging Face.", ...(diagnostic ? { diagnostic: { stage: "huggingface", upstreamStatus: upstream.status, model: HF_MODEL } } : {}) }, 503);
         }
         if (upstream.status === 400) {
-          return json({ error: "رفض مزود الترجمة صيغة الطلب (400). تم تسجيل التشخيص دون حفظ الوصف أو المفتاح.", ...(diagnostic ? { diagnostic: { stage: "huggingface", upstreamStatus: upstream.status, model: HF_MODEL } } : {}) }, 502);
+          return json({ error: "رفض مزود الترجمة صيغة الطلب (400).", ...(diagnostic ? { diagnostic: { stage: "huggingface", upstreamStatus: upstream.status, model: HF_MODEL, providerMessage: safeProviderMessage } } : {}) }, 502);
         }
         if (upstream.status === 404) {
           return json({ error: "نموذج الترجمة غير متاح لدى مزود Hugging Face حاليًا (404).", ...(diagnostic ? { diagnostic: { stage: "huggingface", upstreamStatus: upstream.status, model: HF_MODEL } } : {}) }, 502);
