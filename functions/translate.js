@@ -32,9 +32,10 @@ export async function onRequestPost({ request, env }) {
     }
     if (!/[\u0600-\u06FF]/.test(sourceText)) return json({ translation: sourceText });
 
+    const diagnostic = body?.diagnostic === true;
     const token = env?.HF_TOKEN;
     if (typeof token !== "string" || !token.trim()) {
-      return json({ error: "إعداد خدمة الترجمة غير مكتمل. راجع سر HF_TOKEN في Cloudflare." }, 503);
+      return json({ error: "إعداد خدمة الترجمة غير مكتمل. راجع سر HF_TOKEN في Cloudflare.", ...(diagnostic ? { diagnostic: { stage: "cloudflare-secret", tokenConfigured: false } } : {}) }, 503);
     }
 
     const controller = new AbortController();
@@ -74,21 +75,21 @@ export async function onRequestPost({ request, env }) {
         });
 
         if (upstream.status === 401 || upstream.status === 403) {
-          return json({ error: "رفضت Hugging Face المفتاح أو صلاحياته. تأكد أن HF_TOKEN من نوع User Access Token وبصلاحية Inference Providers." }, 502);
+          return json({ error: "رفضت Hugging Face المفتاح أو صلاحياته. تأكد أن HF_TOKEN من نوع User Access Token وبصلاحية Inference Providers.", ...(diagnostic ? { diagnostic: { stage: "huggingface", upstreamStatus: upstream.status, model: HF_MODEL } } : {}) }, 502);
         }
         if (upstream.status === 429) {
-          return json({ error: "وصلت خدمة الترجمة إلى حد الاستخدام أو لا يتوفر رصيد كافٍ. راجع حدود الاستخدام في Hugging Face." }, 503);
+          return json({ error: "وصلت خدمة الترجمة إلى حد الاستخدام أو لا يتوفر رصيد كافٍ. راجع حدود الاستخدام في Hugging Face.", ...(diagnostic ? { diagnostic: { stage: "huggingface", upstreamStatus: upstream.status, model: HF_MODEL } } : {}) }, 503);
         }
         if (upstream.status === 400) {
-          return json({ error: "رفض مزود الترجمة صيغة الطلب (400). تم تسجيل التشخيص دون حفظ الوصف أو المفتاح." }, 502);
+          return json({ error: "رفض مزود الترجمة صيغة الطلب (400). تم تسجيل التشخيص دون حفظ الوصف أو المفتاح.", ...(diagnostic ? { diagnostic: { stage: "huggingface", upstreamStatus: upstream.status, model: HF_MODEL } } : {}) }, 502);
         }
         if (upstream.status === 404) {
-          return json({ error: "نموذج الترجمة غير متاح لدى مزود Hugging Face حاليًا (404)." }, 502);
+          return json({ error: "نموذج الترجمة غير متاح لدى مزود Hugging Face حاليًا (404).", ...(diagnostic ? { diagnostic: { stage: "huggingface", upstreamStatus: upstream.status, model: HF_MODEL } } : {}) }, 502);
         }
         if (upstream.status === 422) {
-          return json({ error: "مزود Hugging Face رفض إعدادات النموذج (422). تم تبسيط الطلب لتجنب المعاملات غير المدعومة." }, 502);
+          return json({ error: "مزود Hugging Face رفض إعدادات النموذج (422).", ...(diagnostic ? { diagnostic: { stage: "huggingface", upstreamStatus: upstream.status, model: HF_MODEL } } : {}) }, 502);
         }
-        return json({ error: "خدمة Hugging Face لم تستجب بشكل سليم. حاول مرة أخرى بعد قليل." }, 502);
+        return json({ error: "خدمة Hugging Face لم تستجب بشكل سليم. حاول مرة أخرى بعد قليل.", ...(diagnostic ? { diagnostic: { stage: "huggingface", upstreamStatus: upstream.status, model: HF_MODEL } } : {}) }, 502);
       }
 
       const translated = data?.choices?.[0]?.message?.content;
@@ -104,7 +105,7 @@ export async function onRequestPost({ request, env }) {
         .trim();
 
       if (!cleanTranslation) return json({ error: "لم نتمكن من استخراج الترجمة. حاول بصياغة أخرى." }, 502);
-      return json({ translation: cleanTranslation });
+      return json({ translation: cleanTranslation, ...(diagnostic ? { diagnostic: { stage: "huggingface", upstreamStatus: upstream.status, model: HF_MODEL } } : {}) });
     } finally {
       clearTimeout(timeout);
     }
