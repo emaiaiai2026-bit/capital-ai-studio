@@ -38,7 +38,7 @@ export async function onRequestPost({ request, env }) {
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
+    const timeout = setTimeout(() => controller.abort(), 50000);
 
     try {
       const upstream = await fetch(HF_CHAT_URL, {
