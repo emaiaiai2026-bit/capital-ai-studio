@@ -158,7 +158,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
 <main>
   <section class="hero">
     <h2>أنشئ فيديو من النص أو حرّك صورة باستخدام LTX-2.5</h2>
-    <p>توليد فعلي عبر مساحة Lightricks الرسمية على Hugging Face باستخدام طابور ZeroGPU المجاني المشترك. قد يتغير وقت الانتظار حسب الضغط والحصة المتاحة.</p>
+    <p>ترجمة عربية محلية داخل المتصفح، ثم توليد فعلي عبر مساحة Lightricks الرسمية LTX-2.5 على Hugging Face باستخدام طابور ZeroGPU المشترك.</p>
   </section>
 
   <section class="card">
@@ -167,7 +167,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
       <label for="prompt">احكي لنا المشهد اللي عايز تصنعه</label>
       <textarea id="prompt" maxlength="3000" placeholder="مثال: مشهد سينمائي واقعي لقرية مصرية وقت الغروب، حركة كاميرا هادئة، إضاءة ذهبية وتفاصيل دقيقة..."></textarea>
       <div class="hint"><span id="count">0</span> / 3000 حرف. كلما كان الوصف أوضح، كان الطلب أكثر تحديدًا.</div>
-      <button class="secondary" id="translationTest" type="button" style="margin-top:12px;width:100%">اختبار الترجمة الآن</button>
+      <button class="secondary" id="translationTest" type="button" style="margin-top:12px;width:100%">اختبار الترجمة المجانية على الجهاز</button>
       <div id="translationTestResult" class="status" role="status" aria-live="polite"></div>
     </div>
 
@@ -229,7 +229,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
     <div class="cost-box" aria-live="polite">
       <div class="card-title">🆓 طريقة التشغيل</div>
       <p class="hint">يستخدم المشروع مساحة Lightricks الرسمية LTX-2.5 على Hugging Face ZeroGPU. لا نستخدم مفتاح API مدفوعًا داخل مشروعنا. الخدمة العامة لها طابور وحصة استخدام مشتركة، لذلك لا يوجد ضمان لوقت فوري أو استخدام غير محدود.</p>
-      <p class="hint">النص والصورة المختارة سيتم إرسالهما إلى مساحة Hugging Face لتوليد الفيديو. لا ترفع صورًا خاصة أو لا تملك حق استخدامها.</p>
+      <p class="hint">بعد الترجمة المحلية، يُرسل النص الإنجليزي والصورة المختارة إلى مساحة Hugging Face لتوليد الفيديو. لا يُرسل الوصف العربي إلى خادم الترجمة. لا ترفع صورًا خاصة أو لا تملك حق استخدامها.</p>
       <a href="https://huggingface.co/spaces/Lightricks/LTX-2.5" target="_blank" rel="noopener noreferrer" style="color:#c9b7ff;font-size:12px">فتح مساحة LTX-2.5 الرسمية</a>
     </div>
     <button class="primary" id="generate">ابدأ توليد الفيديو</button>
@@ -272,6 +272,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
 
 <script type="module">
 import { Client, handle_file } from "https://cdn.jsdelivr.net/npm/@gradio/client@2.7.2/dist/index.min.js";
+import { pipeline } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2";
 
 const SPACE_ID = window.location.origin + "/hf";
 const SPACE_URL = window.location.origin + "/hf";
@@ -339,67 +340,66 @@ function buildLocalRequest() {
 }
 
 
+let localTranslatorPromise = null;
+
+async function getLocalTranslator(onProgress) {
+  if (!localTranslatorPromise) {
+    localTranslatorPromise = pipeline("translation", "Xenova/opus-mt-ar-en", {
+      progress_callback: function (progress) {
+        if (typeof onProgress === "function" && progress && progress.status) {
+          const file = progress.file ? " — " + progress.file : "";
+          const percent = Number.isFinite(progress.progress) ? " " + Math.round(progress.progress) + "%" : "";
+          onProgress("تحميل نموذج الترجمة المجاني على جهازك: " + progress.status + percent + file);
+        }
+      }
+    }).catch(function (error) {
+      localTranslatorPromise = null;
+      throw error;
+    });
+  }
+  return localTranslatorPromise;
+}
+
+async function translatePromptToEnglish(text, onProgress) {
+  // English prompts bypass translation. Arabic translation runs locally in the browser.
+  if (!/[\u0600-\u06FF]/.test(text)) return text;
+  if (!navigator.onLine) {
+    throw new Error("يلزم الاتصال بالإنترنت أول مرة لتنزيل نموذج الترجمة. بعد تحميله يمكن للمتصفح الاحتفاظ به للاستخدام التالي.");
+  }
+  try {
+    if (typeof onProgress === "function") onProgress("جاري تجهيز نموذج الترجمة المحلي...");
+    const translator = await getLocalTranslator(onProgress);
+    if (typeof onProgress === "function") onProgress("جاري ترجمة الوصف على جهازك...");
+    const output = await translator(text, { max_new_tokens: 256 });
+    const translated = Array.isArray(output) ? (output[0]?.translation_text || output[0]?.generated_text) : "";
+    if (typeof translated !== "string" || !translated.trim()) {
+      throw new Error("لم يُرجع نموذج الترجمة نتيجة واضحة.");
+    }
+    return translated.trim();
+  } catch (error) {
+    console.error("Local Arabic translation failed", { name: error?.name || "Error" });
+    throw new Error(error.message || "تعذر تشغيل نموذج الترجمة المحلي. جرّب تحديث الصفحة والاتصال بالإنترنت.");
+  }
+}
+
 async function runTranslationDiagnostic() {
   const button = document.getElementById("translationTest");
   const resultBox = document.getElementById("translationTestResult");
   button.disabled = true;
   resultBox.className = "status info";
-  resultBox.textContent = "جارٍ إرسال طلب اختبار حقيقي إلى Hugging Face عبر خادم الموقع...";
+  resultBox.textContent = "سيتم تنزيل نموذج الترجمة المجاني إلى متصفحك أول مرة. لا يتم إرسال نص الاختبار إلى خادم ترجمة.";
   try {
-    const response = await fetch("/translate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text: "مشهد سينمائي هادئ لقرية مصرية وقت الغروب، نخيل وحقول خضراء، دون أشخاص.",
-        diagnostic: true
-      })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (response.ok && typeof data.translation === "string" && data.translation.trim()) {
-      resultBox.className = "status success";
-      resultBox.textContent = "نجح الاتصال والترجمة فعليًا. HTTP " + response.status +
-        (data.diagnostic?.upstreamStatus ? " — Hugging Face HTTP " + data.diagnostic.upstreamStatus : "") +
-        " — النموذج: " + (data.diagnostic?.model || "تم الرد") +
-        " — النتيجة: " + data.translation;
-    } else {
-      resultBox.className = "status error";
-      resultBox.textContent = "فشل اختبار الترجمة. HTTP الموقع: " + response.status +
-        (data.diagnostic?.upstreamStatus ? " — رد Hugging Face: " + data.diagnostic.upstreamStatus : "") +
-        (data.diagnostic?.stage ? " — المرحلة: " + data.diagnostic.stage : "") +
-        (data.diagnostic?.model ? " — النموذج: " + data.diagnostic.model : "") +
-        (data.diagnostic?.providerMessage ? " — رسالة المزود: " + data.diagnostic.providerMessage : "") +
-        " — التفاصيل: " + (data.error || "لم يصل رد مفهوم");
-    }
+    const translated = await translatePromptToEnglish(
+      "مشهد سينمائي هادئ لقرية مصرية وقت الغروب، نخيل وحقول خضراء، دون أشخاص.",
+      function (message) { resultBox.textContent = message; }
+    );
+    resultBox.className = "status success";
+    resultBox.textContent = "نجح اختبار الترجمة المحلية على الجهاز. النموذج: OPUS-MT Arabic → English — النتيجة: " + translated;
   } catch (error) {
     resultBox.className = "status error";
-    resultBox.textContent = "تعذر الوصول إلى مسار الاختبار من المتصفح: " + (error.message || "خطأ اتصال");
+    resultBox.textContent = "تعذر اختبار الترجمة المحلية: " + (error.message || "خطأ غير معروف");
   } finally {
     button.disabled = false;
-  }
-}
-
-async function translatePromptToEnglish(text) {
-  // Only translate when Arabic script is present; preserve prompts already written in English.
-  if (!/[\u0600-\u06FF]/.test(text)) return text;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 50000);
-  try {
-    const response = await fetch("/translate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-      signal: controller.signal
-    });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok || !result.translation || typeof result.translation !== "string") {
-      throw new Error(result.error || "تعذر تحويل الوصف العربي إلى الإنجليزية.");
-    }
-    return result.translation.trim();
-  } catch (error) {
-    if (error.name === "AbortError") throw new Error("استغرق تحويل الوصف وقتًا أطول من المتوقع. حاول مرة أخرى.");
-    throw new Error(error.message || "تعذر تحويل الوصف. تحقق من الاتصال ثم أعد المحاولة.");
-  } finally {
-    clearTimeout(timeout);
   }
 }
 
@@ -660,9 +660,9 @@ async function generateVideo() {
     showStatus("يتم الآن تجهيز طلبك ومحرك الفيديو...", "info");
     const client = await connectLtx();
     const dims = dimensionsFor(requestDraft.aspectRatio, requestDraft.quality);
-    setProgressLabel("جاري فهم الوصف العربي وتجهيزه للمحرك");
-    showStatus("جاري تحويل الوصف إلى صياغة إنجليزية دقيقة حتى يفهم المحرك تفاصيل المشهد...", "info");
-    const translatedPrompt = await translatePromptToEnglish(requestDraft.prompt);
+    setProgressLabel("جاري ترجمة الوصف العربي محليًا على جهازك");
+    showStatus("جاري ترجمة الوصف محليًا دون استخدام رصيد أو خدمة ترجمة مدفوعة...", "info");
+    const translatedPrompt = await translatePromptToEnglish(requestDraft.prompt, function (message) { showStatus(message, "info"); });
     const sceneGuard = "Strictly follow the exact scene, location, time of day, subjects, and visual details described by the user. Preserve the requested setting throughout the entire clip. Do not replace the described scene with an unrelated person, portrait, indoor room, or different location. Do not invent a new main subject or change the time of day. Keep the result visually coherent, natural, and photorealistic unless another style is explicitly requested. AUDIO INSTRUCTIONS: no dialogue, no speech, no narration, no voiceover, no spoken words, no subtitles, no text being read aloud, and no human voice. Use only natural ambient environmental sounds if audio is generated.";
     const prompt = [stylePrefix(requestDraft.visualStyle), translatedPrompt, sceneGuard].filter(Boolean).join(" ");
     const imageInputValue = image ? handle_file(image) : null;
@@ -772,7 +772,7 @@ document.getElementById("generate").addEventListener("click", function () {
     "المدة: " + requestDraft.durationSeconds + " ثانية — الأبعاد: " + requestDraft.aspectRatio +
     " — الدقة: " + (requestDraft.quality === "high" ? "تفاصيل أعلى" : "اقتصادي") +
     " — صورة مرجعية: " + (requestDraft.imageSelected ? "نعم" : "لا") +
-    ". إذا كان الوصف بالعربية، سيُرسل أولًا إلى خدمة الترجمة عبر Hugging Face لصياغته بالإنجليزية، ثم يُرسل النص الإنجليزي والصورة (إن وجدت) إلى مساحة Lightricks LTX-2.5 العامة. الاستخدام عبر طابور ZeroGPU مشترك وقد يتطلب انتظارًا.";
+    ". إذا كان الوصف بالعربية، سيُترجم داخل متصفحك على جهازك باستخدام نموذج مجاني مفتوح المصدر، ثم يُرسل النص الإنجليزي والصورة (إن وجدت) إلى مساحة Lightricks LTX-2.5 العامة. لا يُرسل الوصف العربي إلى خدمة ترجمة خارجية. الاستخدام عبر طابور ZeroGPU مشترك وقد يتطلب انتظارًا.";
   confirmCheck.checked = false;
   approveConfirm.disabled = true;
   openConfirmModal();
