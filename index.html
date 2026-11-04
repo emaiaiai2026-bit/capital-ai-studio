@@ -167,6 +167,8 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
       <label for="prompt">احكي لنا المشهد اللي عايز تصنعه</label>
       <textarea id="prompt" maxlength="3000" placeholder="مثال: مشهد سينمائي واقعي لقرية مصرية وقت الغروب، حركة كاميرا هادئة، إضاءة ذهبية وتفاصيل دقيقة..."></textarea>
       <div class="hint"><span id="count">0</span> / 3000 حرف. كلما كان الوصف أوضح، كان الطلب أكثر تحديدًا.</div>
+      <button class="secondary" id="translationTest" type="button" style="margin-top:12px;width:100%">اختبار الترجمة الآن</button>
+      <div id="translationTestResult" class="status" role="status" aria-live="polite"></div>
     </div>
 
     <div class="field">
@@ -336,6 +338,43 @@ function buildLocalRequest() {
   };
 }
 
+
+async function runTranslationDiagnostic() {
+  const button = document.getElementById("translationTest");
+  const resultBox = document.getElementById("translationTestResult");
+  button.disabled = true;
+  resultBox.className = "status info";
+  resultBox.textContent = "جارٍ إرسال طلب اختبار حقيقي إلى Hugging Face عبر خادم الموقع...";
+  try {
+    const response = await fetch("/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: "مشهد سينمائي هادئ لقرية مصرية وقت الغروب، نخيل وحقول خضراء، دون أشخاص.",
+        diagnostic: true
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (response.ok && typeof data.translation === "string" && data.translation.trim()) {
+      resultBox.className = "status success";
+      resultBox.textContent = "نجح الاتصال والترجمة فعليًا. HTTP " + response.status +
+        (data.diagnostic?.upstreamStatus ? " — Hugging Face HTTP " + data.diagnostic.upstreamStatus : "") +
+        " — النموذج: " + (data.diagnostic?.model || "تم الرد") +
+        " — النتيجة: " + data.translation;
+    } else {
+      resultBox.className = "status error";
+      resultBox.textContent = "فشل اختبار الترجمة. HTTP الموقع: " + response.status +
+        (data.diagnostic?.upstreamStatus ? " — رد Hugging Face: " + data.diagnostic.upstreamStatus : "") +
+        (data.diagnostic?.stage ? " — المرحلة: " + data.diagnostic.stage : "") +
+        " — التفاصيل: " + (data.error || "لم يصل رد مفهوم");
+    }
+  } catch (error) {
+    resultBox.className = "status error";
+    resultBox.textContent = "تعذر الوصول إلى مسار الاختبار من المتصفح: " + (error.message || "خطأ اتصال");
+  } finally {
+    button.disabled = false;
+  }
+}
 
 async function translatePromptToEnglish(text) {
   // Only translate when Arabic script is present; preserve prompts already written in English.
@@ -714,6 +753,8 @@ async function generateVideo() {
   }
 }
 
+document.getElementById("translationTest").addEventListener("click", runTranslationDiagnostic);
+
 promptBox.addEventListener("input", function () {
   count.textContent = promptBox.value.length;
 });
@@ -729,7 +770,7 @@ document.getElementById("generate").addEventListener("click", function () {
     "المدة: " + requestDraft.durationSeconds + " ثانية — الأبعاد: " + requestDraft.aspectRatio +
     " — الدقة: " + (requestDraft.quality === "high" ? "تفاصيل أعلى" : "اقتصادي") +
     " — صورة مرجعية: " + (requestDraft.imageSelected ? "نعم" : "لا") +
-    ". إذا كان الوصف بالعربية، سيُرسل أولًا إلى خدمة ترجمة Google لصياغته بالإنجليزية، ثم يُرسل النص الإنجليزي والصورة (إن وجدت) إلى مساحة Lightricks LTX-2.5 العامة. الاستخدام عبر طابور ZeroGPU مشترك وقد يتطلب انتظارًا.";
+    ". إذا كان الوصف بالعربية، سيُرسل أولًا إلى خدمة الترجمة عبر Hugging Face لصياغته بالإنجليزية، ثم يُرسل النص الإنجليزي والصورة (إن وجدت) إلى مساحة Lightricks LTX-2.5 العامة. الاستخدام عبر طابور ZeroGPU مشترك وقد يتطلب انتظارًا.";
   confirmCheck.checked = false;
   approveConfirm.disabled = true;
   openConfirmModal();
