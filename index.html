@@ -336,6 +336,32 @@ function buildLocalRequest() {
   };
 }
 
+
+async function translatePromptToEnglish(text) {
+  // Only translate when Arabic script is present; preserve prompts already written in English.
+  if (!/[\\u0600-\\u06FF]/.test(text)) return text;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 25000);
+  try {
+    const response = await fetch("/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+      signal: controller.signal
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.translation || typeof result.translation !== "string") {
+      throw new Error(result.error || "تعذر تحويل الوصف العربي إلى الإنجليزية.");
+    }
+    return result.translation.trim();
+  } catch (error) {
+    if (error.name === "AbortError") throw new Error("استغرق تحويل الوصف وقتًا أطول من المتوقع. حاول مرة أخرى.");
+    throw new Error(error.message || "تعذر تحويل الوصف. تحقق من الاتصال ثم أعد المحاولة.");
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function stylePrefix(style) {
   const map = {
     cinematic: "Cinematic realistic visual style.",
@@ -593,8 +619,11 @@ async function generateVideo() {
     showStatus("يتم الآن تجهيز طلبك ومحرك الفيديو...", "info");
     const client = await connectLtx();
     const dims = dimensionsFor(requestDraft.aspectRatio, requestDraft.quality);
+    setProgressLabel("جاري فهم الوصف العربي وتجهيزه للمحرك");
+    showStatus("جاري تحويل الوصف إلى صياغة إنجليزية دقيقة حتى يفهم المحرك تفاصيل المشهد...", "info");
+    const translatedPrompt = await translatePromptToEnglish(requestDraft.prompt);
     const sceneGuard = "Strictly follow the exact scene, location, time of day, subjects, and visual details described by the user. Preserve the requested setting throughout the entire clip. Do not replace the described scene with an unrelated person, portrait, indoor room, or different location. Do not invent a new main subject or change the time of day. Keep the result visually coherent, natural, and photorealistic unless another style is explicitly requested.";
-    const prompt = [stylePrefix(requestDraft.visualStyle), requestDraft.prompt, sceneGuard].filter(Boolean).join(" ");
+    const prompt = [stylePrefix(requestDraft.visualStyle), translatedPrompt, sceneGuard].filter(Boolean).join(" ");
     const imageInputValue = image ? handle_file(image) : null;
     const payload = [
       prompt,
@@ -700,7 +729,7 @@ document.getElementById("generate").addEventListener("click", function () {
     "المدة: " + requestDraft.durationSeconds + " ثانية — الأبعاد: " + requestDraft.aspectRatio +
     " — الدقة: " + (requestDraft.quality === "high" ? "تفاصيل أعلى" : "اقتصادي") +
     " — صورة مرجعية: " + (requestDraft.imageSelected ? "نعم" : "لا") +
-    ". سيتم إرسال النص والصورة (إن وجدت) إلى مساحة Lightricks LTX-2.5 العامة. الاستخدام عبر طابور ZeroGPU مشترك وقد يتطلب انتظارًا.";
+    ". إذا كان الوصف بالعربية، سيُرسل أولًا إلى خدمة ترجمة Google لصياغته بالإنجليزية، ثم يُرسل النص الإنجليزي والصورة (إن وجدت) إلى مساحة Lightricks LTX-2.5 العامة. الاستخدام عبر طابور ZeroGPU مشترك وقد يتطلب انتظارًا.";
   confirmCheck.checked = false;
   approveConfirm.disabled = true;
   openConfirmModal();
