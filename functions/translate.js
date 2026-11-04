@@ -90,6 +90,9 @@ export async function onRequestPost({ request, env }) {
         if (upstream.status === 429) {
           return json({ error: "وصلت خدمة الترجمة إلى حد الاستخدام أو لا يتوفر رصيد كافٍ. راجع حدود الاستخدام في Hugging Face.", ...(diagnostic ? { diagnostic: { stage: "huggingface", upstreamStatus: upstream.status, model: HF_MODEL } } : {}) }, 503);
         }
+        if (upstream.status === 402) {
+          return json({ error: "رصيد Hugging Face المخصص لخدمة Inference Providers غير كافٍ أو انتهى. الكود والاتصال يعملان، لكن المزود أوقف الطلب بسبب الفوترة. لن نغيّر محرك الفيديو أو نفعّل أي مدفوعات تلقائيًا.", ...(diagnostic ? { diagnostic: { stage: "huggingface-billing", upstreamStatus: upstream.status, model: HF_MODEL, providerMessage: safeProviderMessage } } : {}) }, 402);
+        }
         if (upstream.status === 400) {
           return json({ error: "رفض مزود الترجمة صيغة الطلب (400).", ...(diagnostic ? { diagnostic: { stage: "huggingface", upstreamStatus: upstream.status, model: HF_MODEL, providerMessage: safeProviderMessage } } : {}) }, 502);
         }
