@@ -341,7 +341,7 @@ async function translatePromptToEnglish(text) {
   // Only translate when Arabic script is present; preserve prompts already written in English.
   if (!/[\u0600-\u06FF]/.test(text)) return text;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 25000);
+  const timeout = setTimeout(() => controller.abort(), 50000);
   try {
     const response = await fetch("/translate", {
       method: "POST",
