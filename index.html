@@ -339,7 +339,7 @@ function buildLocalRequest() {
 
 async function translatePromptToEnglish(text) {
   // Only translate when Arabic script is present; preserve prompts already written in English.
-  if (!/[\\u0600-\\u06FF]/.test(text)) return text;
+  if (!/[\u0600-\u06FF]/.test(text)) return text;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 25000);
   try {
@@ -622,7 +622,7 @@ async function generateVideo() {
     setProgressLabel("جاري فهم الوصف العربي وتجهيزه للمحرك");
     showStatus("جاري تحويل الوصف إلى صياغة إنجليزية دقيقة حتى يفهم المحرك تفاصيل المشهد...", "info");
     const translatedPrompt = await translatePromptToEnglish(requestDraft.prompt);
-    const sceneGuard = "Strictly follow the exact scene, location, time of day, subjects, and visual details described by the user. Preserve the requested setting throughout the entire clip. Do not replace the described scene with an unrelated person, portrait, indoor room, or different location. Do not invent a new main subject or change the time of day. Keep the result visually coherent, natural, and photorealistic unless another style is explicitly requested.";
+    const sceneGuard = "Strictly follow the exact scene, location, time of day, subjects, and visual details described by the user. Preserve the requested setting throughout the entire clip. Do not replace the described scene with an unrelated person, portrait, indoor room, or different location. Do not invent a new main subject or change the time of day. Keep the result visually coherent, natural, and photorealistic unless another style is explicitly requested. AUDIO INSTRUCTIONS: no dialogue, no speech, no narration, no voiceover, no spoken words, no subtitles, no text being read aloud, and no human voice. Use only natural ambient environmental sounds if audio is generated.";
     const prompt = [stylePrefix(requestDraft.visualStyle), translatedPrompt, sceneGuard].filter(Boolean).join(" ");
     const imageInputValue = image ? handle_file(image) : null;
     const payload = [
