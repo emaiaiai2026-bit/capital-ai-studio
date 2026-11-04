@@ -1,7 +1,7 @@
 const MAX_PROMPT_LENGTH = 3000;
 const HF_CHAT_URL = "https://router.huggingface.co/v1/chat/completions";
 // Listed by Hugging Face as a recommended chat-completion model.
-const HF_MODEL = "Qwen/Qwen2.5-7B-Instruct-1M:fastest";
+const HF_MODEL = "openai/gpt-oss-120b:fastest";
 
 function json(data, status = 200) {
   return Response.json(data, {
