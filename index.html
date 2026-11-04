@@ -271,8 +271,8 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
 <script type="module">
 import { Client, handle_file } from "https://cdn.jsdelivr.net/npm/@gradio/client@2.7.2/dist/index.min.js";
 
-const SPACE_ID = "Lightricks/LTX-2.5";
-const SPACE_URL = "https://lightricks-ltx-2-5.hf.space";
+const SPACE_ID = window.location.origin + "/hf";
+const SPACE_URL = window.location.origin + "/hf";
 let clientPromise = null;
 let apiEndpoint = "/run";
 let previewUrl = null;
