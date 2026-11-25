@@ -166,7 +166,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
     <div class="field">
       <label for="prompt">احكي لنا المشهد اللي عايز تصنعه</label>
       <textarea id="prompt" maxlength="3000" placeholder="مثال: مشهد سينمائي واقعي لقرية مصرية وقت الغروب، حركة كاميرا هادئة، إضاءة ذهبية وتفاصيل دقيقة..."></textarea>
-      <div class="hint"><span id="count">0</span> / 3000 حرف. كلما كان الوصف أوضح، كان الوصف الناتج أدق.</div>
+      <div class="hint"><span id="count">0</span> / 3000 حرف. اكتب جملًا قصيرة مفصولة بفاصلة، وتجنّب العامية الثقيلة لنتيجة أدق. يمكنك أيضًا كتابة الوصف بالإنجليزي مباشرة.</div>
     </div>
   </section>
 
@@ -221,9 +221,10 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:25px 12px;bor
 
   <section class="card" id="resultCard" style="display:none">
     <div class="card-title">✅ الوصف الجاهز</div>
-    <textarea id="result" readonly dir="ltr" style="min-height:150px;text-align:left"></textarea>
+    <textarea id="result" dir="ltr" style="min-height:150px;text-align:left"></textarea>
     <button class="primary" id="copy" type="button" style="margin-top:12px">نسخ الوصف</button>
-    <p class="hint">انسخ الوصف والصقه في أي أداة توليد تستخدمها. هذا الموقع لا يولّد فيديو ولا صور.</p>
+    <p class="hint">⚠️ الترجمة آلية وقد تُخطئ، خصوصًا في العامية المصرية. راجع الوصف الإنجليزي وعدّله بنفسك قبل الاستخدام. انسخه والصقه في أي أداة توليد تستخدمها. هذا الموقع لا يولّد فيديو ولا صور.</p>
+    <div id="warn" class="status error" role="status" style="display:none"></div>
   </section>
 
   <section class="card">
@@ -288,6 +289,45 @@ async function toEnglish(text, onProgress) {
   return t.trim();
 }
 
+
+// Egyptian dialect words the translation model gets wrong. Longest first.
+const glossary = [
+  ["ناس ماشية","أناس يمشون"],["بائع عرقسوس","بائع مشروب عرق السوس"],["عرقسوس","مشروب عرق السوس"],["ترعة","قناة مائية"],
+  ["بيحصد","يحصد"],["بيحصدوا","يحصدون"],["فلاحين","مزارعين"],["فلاح","مزارع"],["بدري","في الصباح الباكر"],
+  ["بيلعبوا","يلعبون"],["بيلعب","يلعب"],["بتنعكس","تنعكس"],["بيجري","يركض"],["بيجروا","يركضون"],["بيبيع","يبيع"],
+  ["بيمشي","يمشي"],["بيمشوا","يمشون"],["بيشرب","يشرب"],["بيشربوا","يشربون"],["بتشرب","تشرب"],["بيصلي","يصلي"],["بيصطاد","يصطاد"],
+  ["دافية","دافئة"],["دافي","دافئ"],["حارة","زقاق"],["قهوة بلدي","مقهى تقليدي"],["مركب فلوكة","قارب شراعي تقليدي"],["فلوكة","قارب شراعي تقليدي"],["مركب","قارب"],
+  ["جاموسة","جاموس الماء"],["حمار","حمار"],["عربية كارو","عربة يجرها حصان"],["كارو","عربة يجرها حصان"],["صبي","ولد صغير"],["الشط","ضفة النهر"]
+].sort((a,b)=>b[0].length-a[0].length);
+const AR = "\\u0600-\\u06FF";
+function applyGlossary(text) {
+  let out = text;
+  for (const [ar, en] of glossary) {
+    out = out.replace(new RegExp("(^|[^" + AR + "])(ال|و|ب|ل|وال|بال|لل)?" + ar + "(?![" + AR + "])", "g"), (m, pre, px) => pre + (px || "") + en);
+  }
+  return out;
+}
+
+// Safety filter: block unwanted words in the English output.
+const blocked = ["orgasm","sex","sexy","sexual","porn","nude","naked","erotic","fuck","shit","bitch","cock","dick","pussy","rape","kill","murder","blood","gore","suicide","terror","bomb","drug","cocaine","heroin","slut","whore","penis","vagina","breast","nipple"];
+const blockedRe = new RegExp("\\b(" + blocked.join("|") + ")\\w*", "gi");
+function safetyFilter(text) {
+  let hit = false;
+  const clean = text.replace(blockedRe, () => { hit = true; return "[?]"; });
+  return { clean, hit };
+}
+
+async function translateClauses(text, onProgress) {
+  const clauses = text.split(/[،,.؛;!؟?\n]+/).map((c) => c.trim()).filter(Boolean);
+  const out = [];
+  for (const c of clauses) {
+    const prepared = applyGlossary(c).replace(/\s+/g, " ").trim();
+    out.push(await toEnglish(prepared, onProgress));
+  }
+  return out.map((c) => c.replace(/[.\s]+$/, "")).join(", ")
+    .replace(/\bliquor[- ]?skinner\b/gi, "licorice drink vendor").replace(/\bmovie scene\b/gi, "cinematic scene").replace(/\bmovie\b/gi, "cinematic");
+}
+
 function currentSettings() {
   return { prompt: promptBox.value.trim(), ratio: $("ratio").value, style: $("style").value, camera: $("camera").value, light: $("light").value };
 }
@@ -299,7 +339,12 @@ $("build").addEventListener("click", async () => {
   btn.disabled = true;
   showStatus("جاري التجهيز...", "info");
   try {
-    const english = await toEnglish(s.prompt, (m) => showStatus(m, "info"));
+    const translated = await translateClauses(s.prompt, (m) => showStatus(m, "info"));
+    const filtered = safetyFilter(translated);
+    const english = filtered.clean;
+    const warn = $("warn");
+    if (filtered.hit) { warn.textContent = "تم حجب كلمات غير مناسبة ظهرت في الترجمة الآلية وظهرت كـ [?]. عدّل الوصف أو اكتب الجزء ده بالإنجليزي بنفسك."; warn.style.display = "block"; }
+    else { warn.style.display = "none"; }
     const parts = [english.replace(/[.\s]+$/, "") + ".", s.camera && (s.camera.charAt(0).toUpperCase() + s.camera.slice(1) + "."), s.light && (s.light.charAt(0).toUpperCase() + s.light.slice(1) + "."), styleText[s.style], "Aspect ratio " + s.ratio + "."].filter(Boolean);
     $("result").value = parts.join(" ");
     $("resultCard").style.display = "block";
@@ -315,6 +360,7 @@ $("build").addEventListener("click", async () => {
 $("copy").addEventListener("click", async () => {
   const box = $("result");
   try {
+    const f = safetyFilter(box.value); if (f.hit) { box.value = f.clean; showStatus("تم حجب كلمات غير مناسبة من الوصف قبل النسخ.", "error"); return; }
     await navigator.clipboard.writeText(box.value);
     showStatus("تم النسخ.", "success");
   } catch (_) {
